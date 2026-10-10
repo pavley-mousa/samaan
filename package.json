@@ -1,0 +1,24 @@
+{
+  "name": "samaan",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/storefront"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev --workspace=@samaan/api\" \"npm run dev --workspace=@samaan/storefront\"",
+    "dev:api": "npm run dev --workspace=@samaan/api",
+    "dev:storefront": "npm run dev --workspace=@samaan/storefront",
+    "db:generate": "npm run prisma:generate --workspace=@samaan/api",
+    "admin:create": "npm run admin:create --workspace=@samaan/api",
+    "typecheck": "npm run typecheck --workspace=@samaan/api && npm run typecheck --workspace=@samaan/storefront",
+    "db:validate": "npm run prisma:validate --workspace=@samaan/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

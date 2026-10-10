@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "prisma generate --schema=prisma/schema.prisma && nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "dotenv -e ../../.env -- prisma generate --schema=prisma/schema.prisma",

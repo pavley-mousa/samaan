@@ -26,7 +26,7 @@ export class AuthService {
   }
 
   private async issueSession(user: User): Promise<{ user: PublicUser; accessToken: string }> {
-    const accessToken = await this.jwt.signAsync({ sub: user.id });
+    const accessToken = await this.jwt.signAsync({ sub: user.id, sv: user.sessionVersion });
     return { user: this.publicUser(user), accessToken };
   }
 
@@ -83,6 +83,79 @@ export class AuthService {
     return this.issueSession(user);
   }
 
+  async requestPasswordReset(emailInput: string): Promise<{ message: string }> {
+    const genericResponse = {
+      message: 'لو البريد الإلكتروني مسجل ونشط، هيوصلك رابط استعادة كلمة المرور. راجع الوارد والبريد غير الهام.',
+    };
+    const email = emailInput.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, status: true },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE) return genericResponse;
+
+    const rawToken = randomBytes(32).toString('base64url');
+    const tokenHash = this.digest(rawToken);
+    await this.prisma.passwordResetToken.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+      },
+      update: {
+        tokenHash,
+        expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+        createdAt: new Date(),
+      },
+    });
+
+    try {
+      await this.mail.sendPasswordResetEmail(user.email, rawToken);
+    } catch {
+      // Keep responses generic and remove the unusable token if delivery fails.
+      await this.prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id, tokenHash },
+      }).catch(() => undefined);
+      console.error('Password reset email delivery failed.');
+    }
+    return genericResponse;
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    if (Buffer.byteLength(newPassword, 'utf8') > 72) {
+      throw new BadRequestException('كلمة المرور طويلة جدًا. استخدم كلمة مرور لا تتجاوز 72 بايتًا.');
+    }
+
+    const tokenHash = this.digest(token);
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+    if (!record || record.expiresAt <= new Date() || record.user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('رابط استعادة كلمة المرور غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا.');
+    }
+
+    const passwordHash = await hash(newPassword, PASSWORD_COST);
+    await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.passwordResetToken.deleteMany({
+        where: { id: record.id, tokenHash, expiresAt: { gt: new Date() } },
+      });
+      if (consumed.count !== 1) {
+        throw new BadRequestException('رابط استعادة كلمة المرور غير صالح أو استُخدم من قبل.');
+      }
+      await tx.user.update({
+        where: { id: record.userId },
+        data: {
+          passwordHash,
+          sessionVersion: { increment: 1 },
+          updatedAt: new Date(),
+        },
+      });
+    });
+    return { message: 'تم تغيير كلمة المرور بنجاح. سجّل الدخول من جديد على أجهزتك.' };
+  }
+
   async login(dto: LoginDto): Promise<{ user: PublicUser; accessToken: string }> {
     const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -106,11 +179,16 @@ export class AuthService {
 
   async verifySessionToken(token: string): Promise<string> {
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string }>(token);
-      if (!payload.sub) throw new Error('Missing subject');
+      const payload = await this.jwt.verifyAsync<{ sub: string; sv: number }>(token);
+      if (!payload.sub || !Number.isInteger(payload.sv)) throw new Error('Invalid session payload');
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { sessionVersion: true },
+      });
+      if (!user || user.sessionVersion !== payload.sv) throw new Error('Session has been revoked');
       return payload.sub;
     } catch {
-      throw new UnauthorizedException('سجّل الدخول للمتابعة.');
+      throw new UnauthorizedException('الجلسة انتهت أو تم إلغاؤها. سجّل الدخول من جديد.');
     }
   }
 }

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+samaan.env
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+coverage/
+*.log

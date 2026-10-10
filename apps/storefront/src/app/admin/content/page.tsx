@@ -18,12 +18,6 @@ const families = [
   ['accessory', 'إكسسوارات'],
 ] as const;
 
-const localDateValue = (value: string) => {
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
-};
-
 export default function AdminContentPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -205,7 +199,7 @@ export default function AdminContentPage() {
 
   const videoIsYoutube = /youtube\.com|youtu\.be/i.test(videoUrl);
   const youtubeId = videoUrl.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/)?.[1];
-  const childOptions = categories.filter((category) => !categoryId || category.id !== categoryId).filter((category) => category.productType === categoryDraft.productType);
+  const childOptions = categories.filter((category) => !category.parentId && (!categoryId || category.id !== categoryId) && category.productType === categoryDraft.productType);
   return <main className="page-shell admin-page">
     <div className="admin-page-head"><div><span className="eyebrow">تخصيص البراند</span><h1 className="page-title">محتوى وروابط الموقع</h1><p className="muted">عدّل صفحات الفوتر، وفئات الأقمشة وأنواع الجلابيات، ومواعيد الاستلام، وفيديو المقاسات من مكان واحد.</p></div><Link href="/admin" className="button button-light">لوحة المتجر ←</Link></div>
     {error && <div className="form-error" role="alert">{error}</div>}

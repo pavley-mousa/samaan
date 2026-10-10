@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.module';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -58,6 +58,11 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     const { imageUrls, ...fields } = dto;
+    if (fields.categoryId) {
+      const category = await this.prisma.category.findUnique({ where: { id: fields.categoryId }, select: { id: true, productType: true, parentId: true, isActive: true } });
+      if (!category || !category.isActive) throw new BadRequestException('التصنيف المختار غير متاح.');
+      if (category.productType && category.productType !== fields.productType) throw new BadRequestException('نوع التصنيف لا يطابق نوع المنتج.');
+    }
     const product = await this.prisma.product.create({
       data: {
         ...fields,
@@ -74,6 +79,13 @@ export class ProductsService {
     const current = await this.prisma.product.findUnique({ where: { id }, select: { id: true, name: true } });
     if (!current) throw new NotFoundException('المنتج غير موجود.');
     const { imageUrls, basePrice, minimumQuantity, ...fields } = dto;
+    if (fields.categoryId) {
+      const category = await this.prisma.category.findUnique({ where: { id: fields.categoryId }, select: { id: true, productType: true, isActive: true } });
+      if (!category || !category.isActive) throw new BadRequestException('التصنيف المختار غير متاح.');
+      if (category.productType && category.productType !== (fields.productType ?? (await this.prisma.product.findUnique({ where: { id }, select: { productType: true } }))?.productType)) {
+        throw new BadRequestException('نوع التصنيف لا يطابق نوع المنتج.');
+      }
+    }
     await this.prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id },

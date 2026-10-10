@@ -24,6 +24,7 @@ export class AdminCategoriesController {
   async create(@Body() dto: CreateCategoryDto) {
     const parent = dto.parentId ? await this.prisma.category.findUnique({ where: { id: dto.parentId } }) : null;
     if (dto.parentId && !parent) throw new NotFoundException('الفئة الرئيسية غير موجودة.');
+    if (parent?.parentId) throw new BadRequestException('المسموح فئة رئيسية ثم نوع فرعي واحد فقط. اختار الفئة الرئيسية مباشرة.');
     if (parent?.productType && dto.productType && parent.productType !== dto.productType) {
       throw new BadRequestException('نوع المنتج في الفئة الفرعية يجب أن يطابق نوع الفئة الرئيسية.');
     }
@@ -47,6 +48,7 @@ export class AdminCategoriesController {
     if (parentId === id) throw new BadRequestException('الفئة لا يمكن أن تكون فئة رئيسية لنفسها.');
     const parent = parentId ? await this.prisma.category.findUnique({ where: { id: parentId } }) : null;
     if (parentId && !parent) throw new NotFoundException('الفئة الرئيسية غير موجودة.');
+    if (parent?.parentId) throw new BadRequestException('المسموح فئة رئيسية ثم نوع فرعي واحد فقط. اختار الفئة الرئيسية مباشرة.');
     if (parent && (parent.parentId === id || parent.productType && (dto.productType ?? current.productType) && parent.productType !== (dto.productType ?? current.productType))) {
       throw new BadRequestException('اختيار الفئة الرئيسية غير صالح أو نوعها لا يطابق نوع الفئة.');
     }

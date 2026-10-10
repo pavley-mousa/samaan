@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
+import { SitePageQuickActions } from '@/components/SitePageQuickActions';
 
 type SitePage = { id: string; slug: string; title: string; content: string; updatedAt: string };
 
@@ -30,6 +31,6 @@ export default function BrandPage() {
 
   return <main className="page-shell brand-page">
     <div className="breadcrumbs"><Link href="/">الرئيسية</Link><span>←</span><span>{page.title}</span></div>
-    <article className="brand-page-content"><span className="eyebrow">Samaan</span><h1 className="page-title">{page.title}</h1><div className="brand-page-copy">{page.content}</div></article>
+    <article className="brand-page-content"><SitePageQuickActions page={page} onChanged={() => window.location.reload()} /><span className="eyebrow">Samaan</span><h1 className="page-title">{page.title}</h1><div className="brand-page-copy">{page.content}</div></article>
   </main>;
 }

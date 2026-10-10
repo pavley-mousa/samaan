@@ -128,7 +128,7 @@ export class TailoringService {
       if (dto.status === 'cancelled' && current.pickupSlotId) {
         await tx.pickupSlot.updateMany({
           where: { id: current.pickupSlotId, reservedCount: { gt: 0 } },
-          data: { reservedCount: { decrement: 1, updatedAt: new Date() } },
+          data: { reservedCount: { decrement: 1 }, updatedAt: new Date() },
         });
       }
       void adminId;

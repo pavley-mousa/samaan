@@ -102,7 +102,7 @@ export default function AdminPage() {
 
   if (loading || !user || user.role !== 'ADMIN') return <main className="loading-shell">جارٍ التحقق من صلاحيات الإدارة...</main>;
   return <main className="page-shell admin-page">
-    <div className="admin-page-head"><div><span className="eyebrow">إدارة المتجر</span><h1 className="page-title">لوحة التحكم</h1><p className="muted">أهلًا {user.name}، المنتجات والمخزون والطلبات تتدار من هنا.</p></div><Link className="button button-light" href="/">معاينة المتجر ←</Link></div>
+    <div className="admin-page-head"><div><span className="eyebrow">إدارة المتجر</span><h1 className="page-title">لوحة التحكم</h1><p className="muted">أهلًا {user.name}، المنتجات والمخزون والطلبات تتدار من هنا.</p></div><div className="button-row"><Link className="button button-light" href="/">معاينة المتجر ←</Link><Link className="button button-dark" href="/admin/tailoring">طلبات التفصيل</Link></div></div>
     {error && <div className="form-error" role="alert">{error}</div>}{notice && <div className="form-success" role="status">{notice}</div>}
     <section className="admin-section"><div className="section-head"><div><span className="eyebrow">كتالوج المتجر</span><h2>إضافة منتج</h2><p className="section-desc">بعد إضافة المنتج، أضف الألوان والمقاسات والكميات المتاحة له.</p></div><span className="pill">{products.length} منتج</span></div>
       <form className="product-admin-form" onSubmit={createProduct}>

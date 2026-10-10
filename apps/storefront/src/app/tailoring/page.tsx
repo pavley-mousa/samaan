@@ -7,7 +7,9 @@ import { useAuth } from '@/components/AuthProvider';
 import { apiRequest } from '@/lib/api';
 
 type ProductVariant = { id: string; colorName?: string | null; sizeLabel?: string | null; isActive: boolean; stockQuantity: number | string };
-type CatalogProduct = { id: string; name: string; slug: string; productType: string; fabricType?: string | null; variants: ProductVariant[] };
+type CatalogProduct = { id: string; name: string; slug: string; productType: string; categoryId?: string | null; category?: { id: string; name: string; parentId?: string | null } | null; fabricType?: string | null; variants: ProductVariant[] };
+type StoreCategory = { id: string; name: string; slug: string; parentId?: string | null; productType?: string | null; parent?: { id: string; name: string } | null };
+type PickupSlot = { id: string; label: string; startsAt: string; endsAt: string; capacity: number; reservedCount: number };
 type TailoringRequest = {
   id: string;
   status: string;
@@ -19,6 +21,8 @@ type TailoringRequest = {
   quotedPrice?: number | string | null;
   estimatedDays?: number | null;
   createdAt: string;
+  pickupSlotId?: string | null;
+  pickupSlot?: { id: string; label: string; startsAt: string; endsAt: string } | null;
   product?: { id: string; name: string; slug: string; productType: string } | null;
   fabricVariant?: { id: string; colorName?: string | null; sizeLabel?: string | null; product: { id: string; name: string; fabricType?: string | null } } | null;
 };
@@ -54,6 +58,12 @@ export default function TailoringPage() {
   const router = useRouter();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [requests, setRequests] = useState<TailoringRequest[]>([]);
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>([]);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [tailoringCategoryId, setTailoringCategoryId] = useState('');
+  const [fabricCategoryId, setFabricCategoryId] = useState('');
+  const [pickupSelections, setPickupSelections] = useState<Record<string, string>>({});
   const [productId, setProductId] = useState('');
   const [fabricVariantId, setFabricVariantId] = useState('');
   const [fabricDescription, setFabricDescription] = useState('');
@@ -78,10 +88,16 @@ export default function TailoringPage() {
     void Promise.all([
       apiRequest<CatalogProduct[]>(`/products?${query.toString()}`),
       apiRequest<TailoringRequest[]>('/tailoring/mine'),
-    ]).then(([catalog, mine]) => {
+      apiRequest<StoreCategory[]>('/categories').catch(() => [] as StoreCategory[]),
+      apiRequest<PickupSlot[]>('/pickup-slots').catch(() => [] as PickupSlot[]),
+      apiRequest<{ videoUrl: string | null }>('/site-settings/measurement-video').catch(() => ({ videoUrl: null })),
+    ]).then(([catalog, mine, categoryData, slotData, guide]) => {
       if (cancelled) return;
       setProducts(catalog);
       setRequests(mine);
+      setCategories(categoryData);
+      setPickupSlots(slotData);
+      setVideoUrl(guide.videoUrl || '');
       const selected = new URLSearchParams(window.location.search).get('productId');
       if (selected && catalog.some((item) => item.id === selected && item.productType === 'custom_galabiya')) setProductId(selected);
     }).catch((reason: unknown) => {
@@ -91,7 +107,24 @@ export default function TailoringPage() {
   }, [user]);
 
   async function reloadRequests() {
-    setRequests(await apiRequest<TailoringRequest[]>('/tailoring/mine'));
+    const [mine, slots] = await Promise.all([
+      apiRequest<TailoringRequest[]>('/tailoring/mine'),
+      apiRequest<PickupSlot[]>('/pickup-slots').catch(() => [] as PickupSlot[]),
+    ]);
+    setRequests(mine);
+    setPickupSlots(slots);
+  }
+
+  async function choosePickupSlot(requestId: string) {
+    const pickupSlotId = pickupSelections[requestId] || requests.find((request) => request.id === requestId)?.pickupSlotId || '';
+    if (!pickupSlotId) { setError('اختار موعد الاستلام الأول.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await apiRequest(`/tailoring/${encodeURIComponent(requestId)}/pickup-slot`, { method: 'POST', body: JSON.stringify({ pickupSlotId }) });
+      setNotice('تم حجز موعد الاستلام للجلابية التفصيل.');
+      await reloadRequests();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر حجز الموعد.'); }
+    finally { setBusy(false); }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -149,8 +182,11 @@ export default function TailoringPage() {
 
   if (loading || !user || dataLoading) return <main className="loading-shell">جارٍ تحميل طلبات التفصيل...</main>;
 
-  const customProducts = products.filter((item) => item.productType === 'custom_galabiya');
-  const fabrics = products.filter((item) => item.productType === 'fabric');
+  const customCategories = categories.filter((category) => category.productType === 'custom_galabiya');
+  const fabricCategories = categories.filter((category) => category.productType === 'fabric');
+  const customProducts = products.filter((item) => item.productType === 'custom_galabiya' && (!tailoringCategoryId || item.categoryId === tailoringCategoryId));
+  const fabrics = products.filter((item) => item.productType === 'fabric' && (!fabricCategoryId || item.categoryId === fabricCategoryId));
+  const youtubeId = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/)?.[1];
 
   return <main className="page-shell">
     <div className="section-head">
@@ -159,13 +195,26 @@ export default function TailoringPage() {
     </div>
     {error && <div className="form-error" role="alert">{error}</div>}
     {notice && <div className="form-success" role="status">{notice}</div>}
+    <section className="measurement-guide">
+      <div className="section-head"><div><span className="eyebrow">دليل المقاسات</span><h2>شاهد طريقة أخذ المقاسات</h2><p className="section-desc">قِس بالسنتيمتر باستخدام شريط قياس مرن، وخلي الشريط مريح من غير شد زائد. لو مش متأكد من قياس، سيبه فاضي وفريق التفصيل هيراجعه معاك.</p></div></div>
+      {videoUrl ? youtubeId
+        ? <div className="measurement-video-frame"><iframe src={`https://www.youtube-nocookie.com/embed/${youtubeId}`} title="فيديو طريقة أخذ المقاسات" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>
+        : <div className="measurement-video-frame"><video src={videoUrl} controls preload="metadata">المتصفح لا يدعم تشغيل الفيديو.</video></div>
+        : <div className="measurement-video-placeholder"><strong>فيديو طريقة أخذ المقاسات لم يتم رفعه بعد.</strong><span>سيظهر هنا بمجرد أن يضيفه مدير المتجر.</span>{user.role === 'ADMIN' && <Link className="inline-link" href="/admin/content">رفع فيديو المقاسات ←</Link>}</div>}
+    </section>
     <section className="admin-section">
       <form className="product-admin-form" onSubmit={(event) => void submit(event)}>
+        <label className="form-field form-field-wide">نوع الجلابية / الفئة (اختياري)
+          <select value={tailoringCategoryId} onChange={(event) => { setTailoringCategoryId(event.target.value); setProductId(""); }}><option value="">كل أنواع التفصيل</option>{customCategories.filter((category) => !category.parentId).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}{customCategories.filter((category) => Boolean(category.parentId)).map((category) => <option key={category.id} value={category.id}>— {category.name}</option>)}</select>
+        </label>
         <label className="form-field form-field-wide">الموديل (اختياري)
           <select value={productId} onChange={(event) => setProductId(event.target.value)}>
             <option value="">تفصيل بتصميم خاص بي</option>
             {customProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
           </select>
+        </label>
+        <label className="form-field form-field-wide">فئة القماش (اختياري)
+          <select value={fabricCategoryId} onChange={(event) => { setFabricCategoryId(event.target.value); setFabricVariantId(""); }}><option value="">كل فئات الأقمشة</option>{fabricCategories.filter((category) => !category.parentId).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}{fabricCategories.filter((category) => Boolean(category.parentId)).map((category) => <option key={category.id} value={category.id}>— {category.name}</option>)}</select>
         </label>
         <label className="form-field form-field-wide">الخامة من المتجر (اختياري)
           <select value={fabricVariantId} onChange={(event) => setFabricVariantId(event.target.value)}>
@@ -195,6 +244,14 @@ export default function TailoringPage() {
           <p className="muted small">{[request.fabricVariant?.colorName, request.colorName, request.sizeLabel].filter(Boolean).join(' · ')}</p>
           {request.customerNotes && <p>{request.customerNotes}</p>}
           {request.quotedPrice !== null && request.quotedPrice !== undefined && <div className="form-success"><strong>عرض السعر: {Number(request.quotedPrice).toLocaleString('ar-EG')} ج.م</strong>{request.estimatedDays ? <span> · مدة متوقعة: {request.estimatedDays} يوم</span> : null}</div>}
+          {request.pickupSlot && <p className="pickup-selected-note"><strong>موعد الاستلام المحجوز:</strong> {request.pickupSlot.label} — {new Date(request.pickupSlot.startsAt).toLocaleString('ar-EG')}</p>}
+          {['approved', 'in_progress', 'ready'].includes(request.status) && <div className="pickup-slot-picker"><label className="form-field">اختيار / تغيير موعد استلام الجلابية التفصيل
+            <select value={pickupSelections[request.id] ?? request.pickupSlotId ?? ''} onChange={(event) => setPickupSelections((old) => ({ ...old, [request.id]: event.target.value }))}>
+              <option value="">اختار موعدًا متاحًا</option>
+              {request.pickupSlot && !pickupSlots.some((slot) => slot.id === request.pickupSlotId) && <option value={request.pickupSlot.id}>{request.pickupSlot.label} — {new Date(request.pickupSlot.startsAt).toLocaleString('ar-EG')} (الموعد الحالي)</option>}
+              {pickupSlots.map((slot) => <option key={slot.id} value={slot.id}>{slot.label} — {new Date(slot.startsAt).toLocaleString('ar-EG')} (متاح {Math.max(slot.capacity - slot.reservedCount, 0)})</option>)}
+            </select>
+          </label><button type="button" className="button button-dark button-small" onClick={() => void choosePickupSlot(request.id)} disabled={busy || !(pickupSelections[request.id] || request.pickupSlotId)}>حفظ موعد الاستلام</button></div>}
           {request.status === 'quoted' && <div className="button-row"><button type="button" className="button button-dark" onClick={() => void approveQuote(request.id)} disabled={busy}>أوافق على السعر</button><button type="button" className="button button-light" onClick={() => void cancelRequest(request.id)} disabled={busy}>إلغاء الطلب</button></div>}
           {['submitted', 'reviewing'].includes(request.status) && <button type="button" className="button button-light button-small" onClick={() => void cancelRequest(request.id)} disabled={busy}>إلغاء الطلب</button>}
         </article>)}

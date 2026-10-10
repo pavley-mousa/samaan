@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
-const apiTarget = process.env.API_PROXY_TARGET?.replace(/\/$/, '');
+const configuredTarget = process.env.API_PROXY_TARGET
+  ?? (process.env.NODE_ENV === 'development' ? 'http://localhost:4000' : '');
+const apiTarget = configuredTarget.replace(/\/$/, '');
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

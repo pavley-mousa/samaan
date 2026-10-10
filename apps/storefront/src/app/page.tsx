@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { apiRequest } from '@/lib/api';
 
@@ -25,8 +24,7 @@ const typeLabel: Record<string, string> = {
 };
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState('');
@@ -34,9 +32,7 @@ export default function HomePage() {
   const [search, setSearch] = useState('');
   const [productType, setProductType] = useState('');
 
-  useEffect(() => { if (!loading && !user) router.replace('/login'); }, [loading, user, router]);
   useEffect(() => {
-    if (!user) return;
     let cancelled = false;
     setProductsLoading(true); setProductsError('');
     const query = new URLSearchParams({ limit: '100' });
@@ -47,15 +43,14 @@ export default function HomePage() {
       .catch((error: unknown) => { if (!cancelled) setProductsError(error instanceof Error ? error.message : 'تعذر تحميل المنتجات.'); })
       .finally(() => { if (!cancelled) setProductsLoading(false); });
     return () => { cancelled = true; };
-  }, [user, search, productType]);
+  }, [search, productType]);
 
-  if (loading || !user) return <main className="loading-shell">جارٍ التحقق من تسجيل الدخول...</main>;
   return <main>
     <section className="hero">
       <div><span className="eyebrow">من الخامة للتفصيلة الأخيرة</span><h1>قماش يليق بذوقك،<br/><span>وجلّابية على مقاسك.</span></h1><p>اكتشف تشكيلة الأقمشة بالمتر والجلاليب الجاهزة، أو اطلب جلابية بتفاصيلك ومقاساتك. خيارات للأفراد وتجار الجملة في مكان واحد.</p><div className="button-row"><a className="button button-dark" href="#products">تصفح المنتجات <span aria-hidden="true"> ←</span></a><a className="button button-light" href="#tailoring">اطلب تفصيل جلابية</a></div></div>
       <div className="hero-art" aria-label="تصميم توضيحي لأقمشة بألوان طبيعية"><div className="fabric-stack"><div className="fabric"/><div className="fabric"/><div className="fabric"/><div className="fabric"/></div><div className="thread-card">اختيارات بخامة مميزة<strong>جودة تبدأ من النسيج</strong></div></div>
     </section>
-    <section className="section" id="fabrics"><div className="section-head"><div><span className="eyebrow">تسوّق حسب احتياجك</span><h2>اختار منين تبدأ</h2><p className="section-desc">كل احتياجات القماش والجلابية في تجربة واحدة.</p></div>{user.role === 'ADMIN' && <Link className="button button-light" href="/admin">إدارة المتجر ←</Link>}</div>
+    <section className="section" id="fabrics"><div className="section-head"><div><span className="eyebrow">تسوّق حسب احتياجك</span><h2>اختار منين تبدأ</h2><p className="section-desc">كل احتياجات القماش والجلابية في تجربة واحدة.</p></div>{user?.role === 'ADMIN' && <Link className="button button-light" href="/admin">إدارة المتجر ←</Link>}</div>
       <div className="category-grid"><a className="category-card" href="#products"><div className="category-icon">▤</div><div><h3>أقمشة بالمتر</h3><p>خامات وألوان تناسب كل موسم.</p></div><span className="arrow">←</span></a><a className="category-card" href="#products"><div className="category-icon">♧</div><div><h3>جلابيب جاهزة</h3><p>اختار الموديل والمقاس واللون.</p></div><span className="arrow">←</span></a><a className="category-card" id="tailoring" href="#products"><div className="category-icon">✂</div><div><h3>تفصيل حسب الطلب</h3><p>تفاصيلك ومقاساتك في طلب واحد.</p></div><span className="arrow">←</span></a></div>
     </section>
     <section className="section" id="products"><div className="section-head"><div><span className="eyebrow">اكتشف التشكيلة</span><h2>منتجات المتجر</h2><p className="section-desc">المنتجات المعروضة تُحمّل مباشرة من قاعدة البيانات.</p></div>{user.role === 'ADMIN' && <Link className="button button-light" href="/admin">إضافة منتج جديد</Link>}</div>

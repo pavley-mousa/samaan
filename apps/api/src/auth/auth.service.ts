@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, ServiceUnavailableException, Unauthori
 import { JwtService } from '@nestjs/jwt';
 import { User, UserRole, UserStatus } from '@prisma/client';
 import { compare, hash } from 'bcryptjs';
-import { createHash, createHmac, randomBytes, randomInt } from 'node:crypto';
+import { createHash, createHmac, createPublicKey, randomBytes, randomInt, verify as verifySignature } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.module';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -10,6 +10,81 @@ import { MailService } from './mail.service';
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 const PASSWORD_COST = 12;
+
+type GoogleJwk = { kid: string; kty: string; n: string; e: string; alg?: string; use?: string };
+let googleJwkCache: GoogleJwk[] = [];
+let googleJwkCacheExpiresAt = 0;
+
+async function getGoogleSigningKeys(forceRefresh = false): Promise<GoogleJwk[]> {
+  if (!forceRefresh && googleJwkCache.length > 0 && Date.now() < googleJwkCacheExpiresAt) return googleJwkCache;
+  let response: Response;
+  try {
+    response = await fetch('https://www.googleapis.com/oauth2/v3/certs', {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    throw new ServiceUnavailableException('تعذر الاتصال بخدمة Google للتحقق من التوقيع.');
+  }
+  if (!response.ok) throw new ServiceUnavailableException('خدمة التحقق من Google غير متاحة حاليًا.');
+  let body: { keys?: GoogleJwk[] };
+  try {
+    body = await response.json() as { keys?: GoogleJwk[] };
+  } catch {
+    throw new ServiceUnavailableException('تعذر تحميل مفاتيح التحقق من Google.');
+  }
+  if (!Array.isArray(body.keys) || body.keys.length === 0) {
+    throw new ServiceUnavailableException('مفاتيح التحقق من Google غير متاحة حاليًا.');
+  }
+  const maxAgeMatch = (response.headers.get('cache-control') ?? '').match(/max-age=(\d+)/i);
+  const maxAgeSeconds = Math.max(60, Math.min(Number(maxAgeMatch?.[1] ?? 3600), 21600));
+  googleJwkCache = body.keys;
+  googleJwkCacheExpiresAt = Date.now() + maxAgeSeconds * 1000;
+  return googleJwkCache;
+}
+
+async function verifyGoogleIdTokenSignature(credential: string): Promise<Record<string, unknown>> {
+  const pieces = credential.split('.');
+  if (pieces.length !== 3) throw new UnauthorizedException('بيانات تسجيل Google غير صالحة.');
+  let header: Record<string, unknown>;
+  try {
+    header = JSON.parse(Buffer.from(pieces[0], 'base64url').toString('utf8')) as Record<string, unknown>;
+  } catch {
+    throw new UnauthorizedException('بيانات تسجيل Google غير صالحة.');
+  }
+  if (header.alg !== 'RS256' || typeof header.kid !== 'string') {
+    throw new UnauthorizedException('خوارزمية توقيع Google غير مقبولة.');
+  }
+
+  let keys = await getGoogleSigningKeys();
+  let key = keys.find((candidate) => candidate.kid === header.kid && candidate.kty === 'RSA');
+  if (!key) {
+    keys = await getGoogleSigningKeys(true);
+    key = keys.find((candidate) => candidate.kid === header.kid && candidate.kty === 'RSA');
+  }
+  if (!key) throw new UnauthorizedException('مفتاح توقيع Google غير صالح أو تم تدويره.');
+
+  let signatureValid = false;
+  try {
+    const publicKey = createPublicKey({ key: key as any, format: 'jwk' });
+    signatureValid = verifySignature(
+      'RSA-SHA256',
+      Buffer.from(pieces[0] + '.' + pieces[1]),
+      publicKey,
+      Buffer.from(pieces[2], 'base64url'),
+    );
+  } catch {
+    signatureValid = false;
+  }
+  if (!signatureValid) throw new UnauthorizedException('توقيع حساب Google غير صالح.');
+
+  try {
+    return JSON.parse(Buffer.from(pieces[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+  } catch {
+    throw new UnauthorizedException('بيانات حساب Google غير صالحة.');
+  }
+}
+
 type PublicUser = Pick<User, 'id' | 'name' | 'firstName' | 'lastName' | 'email' | 'phone' | 'role' | 'status' | 'emailVerifiedAt' | 'createdAt'>;
 
 @Injectable()
@@ -107,31 +182,16 @@ export class AuthService {
     if (typeof credential !== 'string' || credential.length < 100 || credential.length > 8192 || credential.split('.').length !== 3) {
       throw new UnauthorizedException('بيانات تسجيل Google غير صالحة.');
     }
-    let response: Response;
-    try {
-      response = await fetch('https://oauth2.googleapis.com/tokeninfo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-        body: new URLSearchParams({ id_token: credential }),
-        signal: AbortSignal.timeout(8000),
-      });
-    } catch {
-      throw new ServiceUnavailableException('تعذر الاتصال بخدمة Google. حاول مرة أخرى.');
-    }
-    if (!response.ok) throw new UnauthorizedException('انتهت صلاحية تسجيل Google أو أن بياناته غير صحيحة.');
-    let claims: Record<string, unknown>;
-    try {
-      claims = await response.json() as Record<string, unknown>;
-    } catch {
-      throw new UnauthorizedException('تعذر التحقق من حساب Google.');
-    }
+    const claims = await verifyGoogleIdTokenSignature(credential);
     const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : '';
     const googleId = typeof claims.sub === 'string' ? claims.sub : '';
     const expiration = Number(claims.exp);
     const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
     const hostedDomain = typeof claims.hd === 'string' ? claims.hd.trim() : '';
     const issuerOk = claims.iss === 'accounts.google.com' || claims.iss === 'https://accounts.google.com';
-    if (claims.aud !== clientId || !issuerOk || !Number.isFinite(expiration) || expiration * 1000 <= Date.now() || !googleId || !email || !emailVerified) {
+    const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    const notBefore = Number(claims.nbf ?? 0);
+    if (!audiences.includes(clientId) || !issuerOk || !Number.isFinite(expiration) || expiration * 1000 <= Date.now() || (notBefore > 0 && notBefore * 1000 > Date.now()) || !googleId || !email || !emailVerified) {
       throw new UnauthorizedException('تعذر التحقق من حساب Google. حاول تسجيل الدخول مرة أخرى.');
     }
     // Google's guidance treats Gmail and verified Google Workspace addresses as authoritative.

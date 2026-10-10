@@ -1,0 +1,40 @@
+name: Samaan CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Build-only placeholder. No production secret is used in CI.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/samaan?schema=public
+      API_PROXY_TARGET: https://samaan-api.example.invalid
+      NODE_ENV: production
+      JWT_SECRET: ci-only-not-a-production-secret-0123456789abcdef
+      SMTP_HOST: smtp.example.invalid
+      SMTP_FROM: ci@example.invalid
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+      - name: Typecheck API and storefront
+        run: npm run typecheck
+      - name: Build API
+        run: npm run build --workspace=@samaan/api
+      - name: Build storefront
+        run: npm run build --workspace=@samaan/storefront

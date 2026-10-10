@@ -6,9 +6,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { apiRequest } from '@/lib/api';
 import { addCartItem } from '@/lib/cart';
+import { ProductQuickActions } from '@/components/ProductQuickActions';
 
 type ProductVariant = { id: string; sku?: string | null; colorName?: string | null; colorHex?: string | null; sizeLabel?: string | null; price: number | string | null; stockQuantity: number | string; isActive: boolean };
-type StoreProduct = { id: string; name: string; slug: string; productType: string; description?: string | null; fabricType?: string | null; season?: string | null; basePrice: number | string; unit: 'meter' | 'piece'; minimumQuantity: number | string; stockQuantity: number; images: { imageUrl: string; altText?: string | null }[]; variants: ProductVariant[]; category?: { name: string } | null };
+type StoreProduct = { id: string; name: string; slug: string; productType: string; description?: string | null; fabricType?: string | null; season?: string | null; basePrice: number | string; unit: 'meter' | 'piece'; minimumQuantity: number | string; stockQuantity: number; images: { imageUrl: string; altText?: string | null }[]; variants: ProductVariant[]; categoryId?: string | null; category?: { id: string; name: string; parentId?: string | null } | null };
 
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -106,7 +107,7 @@ export default function ProductDetailPage() {
     <div className="breadcrumbs"><Link href="/">الرئيسية</Link><span>←</span><span>{product.name}</span></div>
     <div className="product-detail-grid">
       <div className="product-detail-photo">{product.images[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt={product.images[0].altText || product.name}/> : <div className={`detail-swatch ${product.productType === 'ready_galabiya' ? 'dark' : ''}`}/>}</div>
-      <section className="product-detail-info">
+      <section className="product-detail-info"><ProductQuickActions product={product} onChanged={() => window.location.reload()} />
         <span className="eyebrow">{product.category?.name || ({fabric:'أقمشة بالمتر',ready_galabiya:'جلابيب جاهزة',custom_galabiya:'تفصيل حسب الطلب'} as Record<string,string>)[product.productType] || 'منتج من Samaan'}</span>
         <h1>{product.name}</h1>
         <p className="muted">{product.description || product.fabricType || 'اختار اللون أو المقاس المناسب قبل الإضافة للسلة.'}</p>

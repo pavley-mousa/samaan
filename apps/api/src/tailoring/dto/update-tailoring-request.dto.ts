@@ -6,7 +6,7 @@ export const TAILORING_STATUSES = [
   'reviewing',
   'quoted',
   'approved',
-  'in_progress',
+  'in_production',
   'ready',
   'delivered',
   'rejected',

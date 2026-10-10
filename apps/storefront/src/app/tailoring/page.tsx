@@ -44,7 +44,7 @@ const statusLabels: Record<string, string> = {
   reviewing: 'قيد المراجعة',
   quoted: 'عرض السعر جاهز',
   approved: 'وافق العميل على السعر',
-  in_progress: 'قيد التنفيذ',
+  in_production: 'قيد التنفيذ',
   ready: 'جاهز للتسليم',
   delivered: 'تم التسليم',
   rejected: 'مرفوض',
@@ -245,7 +245,7 @@ export default function TailoringPage() {
           {request.customerNotes && <p>{request.customerNotes}</p>}
           {request.quotedPrice !== null && request.quotedPrice !== undefined && <div className="form-success"><strong>عرض السعر: {Number(request.quotedPrice).toLocaleString('ar-EG')} ج.م</strong>{request.estimatedDays ? <span> · مدة متوقعة: {request.estimatedDays} يوم</span> : null}</div>}
           {request.pickupSlot && <p className="pickup-selected-note"><strong>موعد الاستلام المحجوز:</strong> {request.pickupSlot.label} — {new Date(request.pickupSlot.startsAt).toLocaleString('ar-EG')}</p>}
-          {['approved', 'in_progress', 'ready'].includes(request.status) && <div className="pickup-slot-picker"><label className="form-field">اختيار / تغيير موعد استلام الجلابية التفصيل
+          {['approved', 'in_production', 'ready'].includes(request.status) && <div className="pickup-slot-picker"><label className="form-field">اختيار / تغيير موعد استلام الجلابية التفصيل
             <select value={pickupSelections[request.id] ?? request.pickupSlotId ?? ''} onChange={(event) => setPickupSelections((old) => ({ ...old, [request.id]: event.target.value }))}>
               <option value="">اختار موعدًا متاحًا</option>
               {request.pickupSlot && !pickupSlots.some((slot) => slot.id === request.pickupSlotId) && <option value={request.pickupSlot.id}>{request.pickupSlot.label} — {new Date(request.pickupSlot.startsAt).toLocaleString('ar-EG')} (الموعد الحالي)</option>}

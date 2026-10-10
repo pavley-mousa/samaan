@@ -13,8 +13,8 @@ const allowedTransitions: Record<string, string[]> = {
   submitted: ['reviewing', 'quoted', 'rejected', 'cancelled'],
   reviewing: ['quoted', 'rejected', 'cancelled'],
   quoted: ['quoted', 'rejected', 'cancelled'],
-  approved: ['in_progress', 'cancelled'],
-  in_progress: ['ready'],
+  approved: ['in_production', 'cancelled'],
+  in_production: ['ready'],
   ready: ['delivered'],
   delivered: [],
   rejected: [],
@@ -98,32 +98,42 @@ export class TailoringService {
   }
 
   async updateForAdmin(id: string, dto: UpdateTailoringRequestDto, adminId: string) {
-    const current = await this.prisma.tailoringRequest.findUnique({ where: { id } });
-    if (!current) throw new NotFoundException('طلب التفصيل غير موجود.');
-    if (!allowedTransitions[current.status]?.includes(dto.status)) {
-      throw new BadRequestException('انتقال حالة طلب التفصيل غير مسموح. راجع حالة الطلب الحالية.');
-    }
-    if (dto.status === 'quoted' && dto.quotedPrice === undefined) {
-      throw new BadRequestException('أدخل السعر المقترح قبل إرسال عرض السعر.');
-    }
-    if (dto.status === 'in_progress' && current.status !== 'approved') {
-      throw new BadRequestException('لا يبدأ التنفيذ قبل موافقة العميل على عرض السعر.');
-    }
-    const updated = await this.prisma.tailoringRequest.update({
-      where: { id },
-      data: {
-        status: dto.status,
-        ...(dto.quotedPrice !== undefined ? { quotedPrice: new Prisma.Decimal(dto.quotedPrice) } : {}),
-        ...(dto.estimatedDays !== undefined ? { estimatedDays: dto.estimatedDays } : {}),
-        updatedAt: new Date(),
-      },
-      include: {
-        ...requestInclude,
-        user: { select: { id: true, name: true, email: true, phone: true } },
-      },
-    });
-    void adminId;
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.tailoringRequest.findUnique({ where: { id } });
+      if (!current) throw new NotFoundException('طلب التفصيل غير موجود.');
+      if (!allowedTransitions[current.status]?.includes(dto.status)) {
+        throw new BadRequestException('انتقال حالة طلب التفصيل غير مسموح. راجع حالة الطلب الحالية.');
+      }
+      if (dto.status === 'quoted' && dto.quotedPrice === undefined) {
+        throw new BadRequestException('أدخل السعر المقترح قبل إرسال عرض السعر.');
+      }
+      if (dto.status === 'in_production' && current.status !== 'approved') {
+        throw new BadRequestException('لا يبدأ التنفيذ قبل موافقة العميل على عرض السعر.');
+      }
+
+      const updated = await tx.tailoringRequest.update({
+        where: { id },
+        data: {
+          status: dto.status,
+          ...(dto.quotedPrice !== undefined ? { quotedPrice: new Prisma.Decimal(dto.quotedPrice) } : {}),
+          ...(dto.estimatedDays !== undefined ? { estimatedDays: dto.estimatedDays } : {}),
+          updatedAt: new Date(),
+        },
+        include: {
+          ...requestInclude,
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+
+      if (dto.status === 'cancelled' && current.pickupSlotId) {
+        await tx.pickupSlot.updateMany({
+          where: { id: current.pickupSlotId, reservedCount: { gt: 0 } },
+          data: { reservedCount: { decrement: 1, updatedAt: new Date() } },
+        });
+      }
+      void adminId;
+      return updated;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async approveQuote(userId: string, id: string) {
@@ -146,7 +156,7 @@ export class TailoringService {
         include: { pickupSlot: true },
       });
       if (!request) throw new NotFoundException('طلب التفصيل غير موجود.');
-      if (!['approved', 'in_progress', 'ready'].includes(request.status)) {
+      if (!['approved', 'in_production', 'ready'].includes(request.status)) {
         throw new BadRequestException('اختيار موعد الاستلام متاح بعد الموافقة على عرض السعر.');
       }
 

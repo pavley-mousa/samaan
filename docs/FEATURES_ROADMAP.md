@@ -101,3 +101,10 @@
 5. طلب اعتماد تاجر الجملة وتطبيق أسعار الجملة.
 6. المفضلة والكوبونات والتقييمات واستعادة كلمة المرور.
 7. الشحن والتتبع والإشعارات، ثم بوابة الدفع والتقارير.
+
+
+## Authentication improvements added
+
+- Google Identity Services sign-in/sign-up using a server-validated ID token and unique Google identity linking.
+- Email OTP sign-in and registration with 10-minute expiry, hashed codes, one-time use, a five-attempt maximum, and API throttling.
+- OTP delivery uses the configured SMTP sender. Google requires `GOOGLE_CLIENT_ID` on the API and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on the storefront.

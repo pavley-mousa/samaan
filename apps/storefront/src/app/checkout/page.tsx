@@ -16,7 +16,7 @@ export default function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [order, setOrder] = useState<PlacedOrder | null>(null);
-  useEffect(() => { if (!loading && !user) router.replace('/login'); }, [loading, user, router]);
+  useEffect(() => { if (!loading && !user) router.replace('/login?next=%2Fcheckout'); }, [loading, user, router]);
   useEffect(() => { setItems(readCart()); if (user) setForm((old) => ({ ...old, recipientName: user.name, phone: user.phone || '' })); }, [user]);
   const total = useMemo(() => items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0), [items]);
 

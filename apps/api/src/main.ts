@@ -37,10 +37,11 @@ async function bootstrap(): Promise<void> {
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  const port = Number(process.env.API_PORT ?? 4000);
+  // Render and other managed platforms provide PORT; retain API_PORT for local/dev compatibility.
+  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 4000);
   await app.listen(port);
   // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${port}/api`);
+  console.log(`API listening on port ${port}`);
 }
 
 void bootstrap();

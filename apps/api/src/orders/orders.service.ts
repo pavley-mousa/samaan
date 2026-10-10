@@ -106,6 +106,15 @@ export class OrdersService {
     return orders.map((order) => ({ ...order, orderNumber: order.orderNumber.toString() }));
   }
 
+  async findOneForUser(userId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { items: true, address: true, user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!order) throw new NotFoundException('الطلب غير موجود.');
+    return { ...order, orderNumber: order.orderNumber.toString() };
+  }
+
   async findAllForAdmin() {
     const orders = await this.prisma.order.findMany({
       include: { items: true, address: true, user: { select: { id: true, name: true, email: true, phone: true } } },

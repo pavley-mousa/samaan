@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -20,5 +20,10 @@ export class OrdersController {
   @Get('mine')
   mine(@Req() request: RequestWithUser) {
     return this.orders.findMine(request.user.id);
+  }
+
+  @Get(':id')
+  one(@Req() request: RequestWithUser, @Param('id') id: string) {
+    return this.orders.findOneForUser(request.user.id, id);
   }
 }

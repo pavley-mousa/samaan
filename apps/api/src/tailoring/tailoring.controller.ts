@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateTailoringRequestDto } from './dto/create-tailoring-request.dto';
+import { ChoosePickupSlotDto } from './dto/choose-pickup-slot.dto';
 import { TailoringService } from './tailoring.service';
 
 type RequestWithUser = Request & { user: Pick<User, 'id'> };
@@ -25,6 +26,11 @@ export class TailoringController {
   @Post(':id/approve-quote')
   approveQuote(@Req() request: RequestWithUser, @Param('id') id: string) {
     return this.tailoring.approveQuote(request.user.id, id);
+  }
+
+  @Post(':id/pickup-slot')
+  choosePickupSlot(@Req() request: RequestWithUser, @Param('id') id: string, @Body() dto: ChoosePickupSlotDto) {
+    return this.tailoring.choosePickupSlot(request.user.id, id, dto.pickupSlotId);
   }
 
   @Post(':id/cancel')

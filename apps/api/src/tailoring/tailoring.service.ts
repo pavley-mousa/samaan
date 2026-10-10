@@ -5,17 +5,8 @@ import { CreateTailoringRequestDto } from './dto/create-tailoring-request.dto';
 import { UpdateTailoringRequestDto } from './dto/update-tailoring-request.dto';
 
 const measurementKeys = new Set([
-  'height',
-  'shoulder',
-  'chest',
-  'waist',
-  'hip',
-  'sleeveLength',
-  'garmentLength',
-  'neck',
-  'wrist',
-  'armhole',
-  'cuff',
+  'height', 'shoulder', 'chest', 'waist', 'hip', 'sleeveLength', 'garmentLength',
+  'neck', 'wrist', 'armhole', 'cuff',
 ]);
 
 const allowedTransitions: Record<string, string[]> = {
@@ -31,7 +22,7 @@ const allowedTransitions: Record<string, string[]> = {
 };
 
 const requestInclude = {
-  product: { select: { id: true, name: true, slug: true, productType: true } },
+  product: { select: { id: true, name: true, slug: true, productType: true, category: { select: { id: true, name: true, parentId: true } } } },
   fabricVariant: {
     select: {
       id: true,
@@ -40,6 +31,7 @@ const requestInclude = {
       product: { select: { id: true, name: true, fabricType: true } },
     },
   },
+  pickupSlot: { select: { id: true, label: true, startsAt: true, endsAt: true } },
 } satisfies Prisma.TailoringRequestInclude;
 
 @Injectable()
@@ -49,7 +41,6 @@ export class TailoringService {
   async createForUser(userId: string, dto: CreateTailoringRequestDto) {
     const fabricDescription = dto.fabricDescription?.trim() || null;
     const customerNotes = dto.customerNotes?.trim() || null;
-
     if (!dto.productId && !dto.fabricVariantId && !fabricDescription && !customerNotes) {
       throw new BadRequestException('حدد موديل الجلابية أو الخامة أو اكتب تفاصيل الطلب.');
     }
@@ -64,11 +55,7 @@ export class TailoringService {
 
     if (dto.fabricVariantId) {
       const variant = await this.prisma.productVariant.findFirst({
-        where: {
-          id: dto.fabricVariantId,
-          isActive: true,
-          product: { isActive: true, productType: 'fabric' },
-        },
+        where: { id: dto.fabricVariantId, isActive: true, product: { isActive: true, productType: 'fabric' } },
         select: { id: true },
       });
       if (!variant) throw new BadRequestException('الخامة المختارة غير متاحة حاليًا.');
@@ -113,18 +100,15 @@ export class TailoringService {
   async updateForAdmin(id: string, dto: UpdateTailoringRequestDto, adminId: string) {
     const current = await this.prisma.tailoringRequest.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('طلب التفصيل غير موجود.');
-
     if (!allowedTransitions[current.status]?.includes(dto.status)) {
       throw new BadRequestException('انتقال حالة طلب التفصيل غير مسموح. راجع حالة الطلب الحالية.');
     }
-
     if (dto.status === 'quoted' && dto.quotedPrice === undefined) {
       throw new BadRequestException('أدخل السعر المقترح قبل إرسال عرض السعر.');
     }
     if (dto.status === 'in_progress' && current.status !== 'approved') {
       throw new BadRequestException('لا يبدأ التنفيذ قبل موافقة العميل على عرض السعر.');
     }
-
     const updated = await this.prisma.tailoringRequest.update({
       where: { id },
       data: {
@@ -138,8 +122,6 @@ export class TailoringService {
         user: { select: { id: true, name: true, email: true, phone: true } },
       },
     });
-
-    // adminId is intentionally not stored until the dedicated audit-history migration is added.
     void adminId;
     return updated;
   }
@@ -155,6 +137,58 @@ export class TailoringService {
       data: { status: 'approved', updatedAt: new Date() },
       include: requestInclude,
     });
+  }
+
+  async choosePickupSlot(userId: string, requestId: string, pickupSlotId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.tailoringRequest.findFirst({
+        where: { id: requestId, userId },
+        include: { pickupSlot: true },
+      });
+      if (!request) throw new NotFoundException('طلب التفصيل غير موجود.');
+      if (!['approved', 'in_progress', 'ready'].includes(request.status)) {
+        throw new BadRequestException('اختيار موعد الاستلام متاح بعد الموافقة على عرض السعر.');
+      }
+
+      const now = new Date();
+      const slot = await tx.pickupSlot.findUnique({ where: { id: pickupSlotId } });
+      if (!slot || !slot.isActive || slot.startsAt <= now || slot.endsAt <= now) {
+        throw new BadRequestException('موعد الاستلام غير متاح أو انتهى.');
+      }
+      if (request.pickupSlotId === slot.id) {
+        return tx.tailoringRequest.findUnique({ where: { id: requestId }, include: requestInclude });
+      }
+      if (slot.reservedCount >= slot.capacity) {
+        throw new BadRequestException('اكتمل عدد الحجوزات لهذا الموعد. اختار موعدًا آخر.');
+      }
+
+      if (request.pickupSlotId) {
+        await tx.pickupSlot.updateMany({
+          where: { id: request.pickupSlotId, reservedCount: { gt: 0 } },
+          data: { reservedCount: { decrement: 1 } },
+        });
+      }
+
+      const reserved = await tx.pickupSlot.updateMany({
+        where: {
+          id: slot.id,
+          isActive: true,
+          startsAt: { gt: now },
+          endsAt: { gt: now },
+          reservedCount: slot.reservedCount,
+        },
+        data: { reservedCount: { increment: 1 }, updatedAt: now },
+      });
+      if (reserved.count !== 1) {
+        throw new BadRequestException('تم حجز هذا الموعد للتو. حدّث القائمة واختار موعدًا آخر.');
+      }
+
+      return tx.tailoringRequest.update({
+        where: { id: requestId },
+        data: { pickupSlotId: slot.id, updatedAt: now },
+        include: requestInclude,
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async cancelByUser(userId: string, id: string) {
@@ -173,9 +207,7 @@ export class TailoringService {
   private validateMeasurements(input: Record<string, unknown>): Record<string, number> {
     const output: Record<string, number> = {};
     for (const [key, raw] of Object.entries(input)) {
-      if (!measurementKeys.has(key)) {
-        throw new BadRequestException('اسم أحد حقول المقاسات غير معروف.');
-      }
+      if (!measurementKeys.has(key)) throw new BadRequestException('اسم أحد حقول المقاسات غير معروف.');
       const value = typeof raw === 'number' ? raw : Number(raw);
       if (!Number.isFinite(value) || value <= 0 || value > 300) {
         throw new BadRequestException('المقاسات يجب أن تكون أرقامًا موجبة بالسنتيمتر وبحد أقصى 300 سم.');

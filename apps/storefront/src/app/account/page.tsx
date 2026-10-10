@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { apiRequest } from '@/lib/api';
 
-type CustomerOrder = { id: string; orderNumber: string; status: string; total: number | string; createdAt: string; items: { id: string; productName: string; quantity: number | string; unit: string }[] };
+type CustomerOrder = { id: string; orderNumber: string; status: string; paymentStatus: string; total: number | string; createdAt: string; items: { id: string; productName: string; quantity: number | string; unit: string }[] };
 const statusLabels: Record<string, string> = { pending: 'بانتظار المراجعة', confirmed: 'تم التأكيد', processing: 'قيد التجهيز', shipped: 'تم الشحن', delivered: 'تم التسليم', cancelled: 'ملغي', returned: 'مرتجع' };
 
 export default function AccountPage() {
@@ -22,7 +22,7 @@ export default function AccountPage() {
     <section className="orders-section"><div className="section-head"><div><span className="eyebrow">سجل الشراء</span><h2>الطلبات السابقة</h2></div><Link className="button button-light button-small" href="/">متابعة التسوق</Link></div>
       {error && <div className="form-error">{error}</div>}
       {!orders.length && !error && <div className="empty-state"><p>لسه مفيش طلبات مسجلة على حسابك.</p><Link className="button button-dark" href="/">ابدأ التسوق</Link></div>}
-      <div className="order-list">{orders.map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><strong>طلب #{order.orderNumber}</strong><p className="muted small">{new Date(order.createdAt).toLocaleDateString('ar-EG')}</p></div><span className={`status-chip status-${order.status}`}>{statusLabels[order.status] || order.status}</span></div><div className="order-card-items">{order.items.map((item) => <span key={item.id}>{item.productName} × {Number(item.quantity)} {item.unit === 'meter' ? 'متر' : 'قطعة'}</span>)}</div><strong>الإجمالي: {Number(order.total).toLocaleString('ar-EG')} ج.م</strong></article>)}</div>
+      <div className="order-list">{orders.map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><strong>طلب #{order.orderNumber}</strong><p className="muted small">{new Date(order.createdAt).toLocaleDateString('ar-EG')}</p></div><span className={`status-chip status-${order.status}`}>{statusLabels[order.status] || order.status}</span></div><div className="order-card-items">{order.items.map((item) => <span key={item.id}>{item.productName} × {Number(item.quantity)} {item.unit === 'meter' ? 'متر' : 'قطعة'}</span>)}</div><strong>الإجمالي: {Number(order.total).toLocaleString('ar-EG')} ج.م</strong><div className="button-row account-order-actions"><Link className="button button-light button-small" href={`/orders/${encodeURIComponent(order.id)}/invoice`}>عرض / طباعة الفاتورة</Link>{order.paymentStatus === 'paid' ? <span className="pill">مدفوع</span> : <span className="pill">التحصيل عند الاستلام</span>}</div></article>)}</div>
     </section>
   </main>;
 }

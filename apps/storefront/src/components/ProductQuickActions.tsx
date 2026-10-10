@@ -55,6 +55,8 @@ export function ProductQuickActions({ product, onChanged }: { product: EditableP
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
     try {
+      const originalImageUrl = product.images?.[0]?.imageUrl ?? '';
+      const imageChanged = draft.imageUrl.trim() !== originalImageUrl;
       await apiRequest(`/admin/products/${encodeURIComponent(product.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -63,7 +65,7 @@ export function ProductQuickActions({ product, onChanged }: { product: EditableP
           fabricType: draft.fabricType.trim(),
           basePrice: Number(draft.basePrice),
           categoryId: draft.categoryId || null,
-          ...(draft.imageUrl.trim() ? { imageUrls: [draft.imageUrl.trim()] } : { imageUrls: [] }),
+          ...(imageChanged ? (draft.imageUrl.trim() ? { imageUrls: [draft.imageUrl.trim()] } : { imageUrls: [] }) : {}),
         }),
       });
       setEditOpen(false);

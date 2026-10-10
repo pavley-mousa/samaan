@@ -124,6 +124,33 @@ export class OrdersService {
     return orders.map((order) => ({ ...order, orderNumber: order.orderNumber.toString() }));
   }
 
+
+  async updatePaymentStatus(orderId: string, nextStatus: 'unpaid' | 'paid') {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('الطلب غير موجود.');
+    if (order.status === 'cancelled') {
+      throw new BadRequestException('لا يمكن تسجيل تحصيل مبلغ لطلب ملغي.');
+    }
+    if (nextStatus === 'paid') {
+      if (order.paymentMethod !== 'cash_on_delivery') {
+        throw new BadRequestException('تأكيد الدفع الإلكتروني غير متاح قبل ربط بوابة دفع والتحقق من إشعارها.');
+      }
+      if (order.paymentStatus === 'paid') return { ...order, orderNumber: order.orderNumber.toString() };
+      return this.prisma.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: 'paid', updatedAt: new Date() },
+      }).then((updated) => ({ ...updated, orderNumber: updated.orderNumber.toString() }));
+    }
+    if (order.paymentStatus === 'paid') {
+      throw new BadRequestException('لا يمكن إرجاع الطلب إلى غير مدفوع بعد تسجيل التحصيل. يلزم إجراء مرتجع/استرداد موثق.');
+    }
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { paymentStatus: 'unpaid', updatedAt: new Date() },
+    });
+    return { ...updated, orderNumber: updated.orderNumber.toString() };
+  }
+
   async updateStatus(orderId: string, nextStatus: string) {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });

@@ -9,12 +9,13 @@ import { useAuth } from '@/components/AuthProvider';
 type Category = { id: string; name: string; slug: string };
 type ProductVariant = { id: string; sku?: string | null; colorName?: string | null; colorHex?: string | null; sizeLabel?: string | null; price: number | string | null; stockQuantity: number | string; isActive: boolean };
 type AdminProduct = { id: string; name: string; slug: string; productType: string; description?: string | null; fabricType?: string | null; basePrice: number | string; unit: string; isActive: boolean; stockQuantity: number; variants: ProductVariant[]; category?: Category | null };
-type AdminOrder = { id: string; orderNumber: string; status: string; total: number | string; createdAt: string; user: { name: string; email: string; phone?: string | null }; address?: { governorate: string; city: string; addressLine: string; phone: string; recipientName: string } | null; items: { id: string; productName: string; quantity: number | string; unit: string }[] };
+type AdminOrder = { id: string; orderNumber: string; status: string; paymentStatus: string; paymentMethod: string; total: number | string; createdAt: string; user: { name: string; email: string; phone?: string | null }; address?: { governorate: string; city: string; addressLine: string; phone: string; recipientName: string } | null; items: { id: string; productName: string; quantity: number | string; unit: string }[] };
 type ProductDraft = { name: string; slug: string; productType: string; unit: string; basePrice: string; categoryId: string; fabricType: string; description: string; imageUrl: string };
 type VariantDraft = { sku: string; colorName: string; colorHex: string; sizeLabel: string; price: string; stockQuantity: string };
 
 const labels: Record<string, string> = { fabric: 'قماش بالمتر', ready_galabiya: 'جلابية جاهزة', custom_galabiya: 'جلابية تفصيل', accessory: 'إكسسوار' };
 const statusLabels: Record<string, string> = { pending: 'بانتظار المراجعة', confirmed: 'تم التأكيد', processing: 'قيد التجهيز', shipped: 'تم الشحن', delivered: 'تم التسليم', cancelled: 'ملغي', returned: 'مرتجع' };
+const paymentStatusLabels: Record<string, string> = { unpaid: 'غير مدفوع', pending: 'بانتظار الدفع', paid: 'تم التحصيل', refunded: 'مسترد' };
 const defaultProduct: ProductDraft = { name: '', slug: '', productType: 'fabric', unit: 'meter', basePrice: '', categoryId: '', fabricType: '', description: '', imageUrl: '' };
 const defaultVariant: VariantDraft = { sku: '', colorName: '', colorHex: '#6b705c', sizeLabel: '', price: '', stockQuantity: '1' };
 
@@ -93,6 +94,18 @@ export default function AdminPage() {
     finally { setBusy(false); }
   }
 
+
+  async function changePaymentStatus(orderId: string, status: 'unpaid' | 'paid') {
+    if (status === 'paid' && !window.confirm('هل تم استلام المبلغ فعليًا من العميل؟ سيظهر في الفاتورة أن الطلب مدفوع.')) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await apiRequest(`/admin/orders/${orderId}/payment-status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      setNotice(status === 'paid' ? 'تم تسجيل تحصيل المبلغ، ويمكن للعميل طباعة فاتورة بحالة مدفوع.' : 'تم تحديث حالة الدفع.');
+      await loadOrders();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر تحديث حالة الدفع.'); }
+    finally { setBusy(false); }
+  }
+
   async function changeOrderStatus(orderId: string, status: string) {
     setBusy(true); setError(''); setNotice('');
     try { await apiRequest(`/admin/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); setNotice('تم تحديث حالة الطلب.'); await loadOrders(); }
@@ -137,7 +150,7 @@ export default function AdminPage() {
 
     <section className="admin-section"><div className="section-head"><div><span className="eyebrow">خدمة العملاء</span><h2>إدارة الطلبات</h2><p className="section-desc">تغيير الحالة إلى «ملغي» يعيد الكميات المحجوزة للمخزون تلقائيًا.</p></div><button className="button button-light button-small" type="button" onClick={() => void loadOrders()} disabled={busy}>تحديث الطلبات ↻</button></div>
       {!orders.length && <div className="empty-state"><p>لا توجد طلبات حتى الآن.</p></div>}
-      <div className="admin-orders-list">{orders.map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><strong>طلب #{order.orderNumber}</strong><p className="muted small">{new Date(order.createdAt).toLocaleString('ar-EG')}</p></div><strong>{Number(order.total).toLocaleString('ar-EG')} ج.م</strong></div><div className="order-customer"><strong>{order.address?.recipientName || order.user.name}</strong><span>{order.user.email} · {order.address?.phone || order.user.phone || 'بدون هاتف'}</span><span>{order.address ? `${order.address.governorate}، ${order.address.city}، ${order.address.addressLine}` : 'بدون عنوان'}</span></div><div className="order-card-items">{order.items.map((item) => <span key={item.id}>{item.productName} × {Number(item.quantity)} {item.unit === 'meter' ? 'متر' : 'قطعة'}</span>)}</div><label className="order-status-control">حالة الطلب<select value={order.status} onChange={(event) => void changeOrderStatus(order.id, event.target.value)} disabled={busy}>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select></label></article>)}</div>
+      <div className="admin-orders-list">{orders.map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><strong>طلب #{order.orderNumber}</strong><p className="muted small">{new Date(order.createdAt).toLocaleString('ar-EG')}</p></div><strong>{Number(order.total).toLocaleString('ar-EG')} ج.م</strong></div><div className="order-customer"><strong>{order.address?.recipientName || order.user.name}</strong><span>{order.user.email} · {order.address?.phone || order.user.phone || 'بدون هاتف'}</span><span>{order.address ? `${order.address.governorate}، ${order.address.city}، ${order.address.addressLine}` : 'بدون عنوان'}</span></div><div className="order-card-items">{order.items.map((item) => <span key={item.id}>{item.productName} × {Number(item.quantity)} {item.unit === 'meter' ? 'متر' : 'قطعة'}</span>)}</div><div className="order-admin-status-row"><label className="order-status-control">حالة الطلب<select value={order.status} onChange={(event) => void changeOrderStatus(order.id, event.target.value)} disabled={busy}>{Object.entries(statusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}</select></label><div className="order-payment-control"><span>حالة الدفع: <strong>{paymentStatusLabels[order.paymentStatus] || order.paymentStatus}</strong></span>{order.paymentStatus !== 'paid' && order.status !== 'cancelled' && <button className="button button-light button-small" type="button" onClick={() => void changePaymentStatus(order.id, 'paid')} disabled={busy}>تأكيد استلام المبلغ</button>}{order.paymentStatus === 'paid' && <span className="pill">تم التحصيل</span>}<Link className="inline-link" href={`/orders/${encodeURIComponent(order.id)}/invoice`} target="_blank">فتح الفاتورة للطباعة ←</Link></div></div></article>)}</div>
     </section>
     <div className="notice">الحسابات والصلاحيات يتم التحقق منها في الخادم. باقي المراحل مثل رفع الصور، أسعار الجملة، الكوبونات، واختيار شركات الشحن ستضاف بعد اختبار الكتالوج والطلبات.</div>
   </main>;

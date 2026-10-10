@@ -21,6 +21,8 @@ export default function ProductDetailPage() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [added, setAdded] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -38,6 +40,19 @@ export default function ProductDetailPage() {
     return () => { cancelled = true; };
   }, [slug]);
 
+  useEffect(() => {
+    if (!user || !product?.id) {
+      setIsFavorite(false);
+      return;
+    }
+    let cancelled = false;
+    const productId = product.id;
+    void apiRequest<{ productId: string }[]>('/favorites')
+      .then((items) => { if (!cancelled) setIsFavorite(items.some((item) => item.productId === productId)); })
+      .catch(() => { if (!cancelled) setIsFavorite(false); });
+    return () => { cancelled = true; };
+  }, [user, product?.id]);
+
   const selectedVariant = useMemo(() => product?.variants.find((variant) => variant.id === selectedVariantId) ?? null, [product, selectedVariantId]);
   const price = product ? Number(selectedVariant?.price ?? product.basePrice) : 0;
   const stock = selectedVariant ? Number(selectedVariant.stockQuantity) : 0;
@@ -46,6 +61,30 @@ export default function ProductDetailPage() {
 
   if (busy) return <main className="loading-shell">جارٍ تحميل تفاصيل المنتج...</main>;
   if (!product) return <main className="page-shell"><div className="empty-state"><h1>المنتج غير متاح</h1><p>{error || 'المنتج الذي تبحث عنه غير موجود حاليًا.'}</p><Link className="button button-dark" href="/">العودة للمتجر</Link></div></main>;
+
+  async function toggleFavorite() {
+    if (!product) return;
+    if (!user) {
+      const next = typeof window === 'undefined' ? '/' : window.location.pathname;
+      router.push(`/login?next=${encodeURIComponent(next)}`);
+      return;
+    }
+    setFavoriteBusy(true);
+    setError('');
+    try {
+      if (isFavorite) {
+        await apiRequest('/favorites/' + encodeURIComponent(product.id), { method: 'DELETE' });
+        setIsFavorite(false);
+      } else {
+        await apiRequest('/favorites/' + encodeURIComponent(product.id), { method: 'POST', body: '{}' });
+        setIsFavorite(true);
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'تعذر تحديث المفضلة.');
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
 
   function handleAddToCart() {
     if (!product || !canAdd) return;
@@ -80,7 +119,11 @@ export default function ProductDetailPage() {
         {needsVariant && !selectedVariant && <p className="stock-note">حدد لونًا أو مقاسًا متاحًا لإكمال الشراء.</p>}
         {error && <div className="form-error">{error}</div>}
         {added && <div className="form-success">تمت الإضافة إلى السلة.</div>}
-        <button type="button" className="button button-dark detail-add-button" onClick={handleAddToCart} disabled={!canAdd}>أضف إلى السلة</button>
+        <div className="button-row">
+          <button type="button" className="button button-dark detail-add-button" onClick={handleAddToCart} disabled={!canAdd}>أضف إلى السلة</button>
+          <button type="button" className="button button-light detail-add-button" onClick={() => void toggleFavorite()} disabled={favoriteBusy}>{favoriteBusy ? 'جارٍ الحفظ...' : isFavorite ? 'إزالة من المفضلة' : 'أضف إلى المفضلة ♡'}</button>
+        </div>
+        {product.productType === 'custom_galabiya' && <Link className="inline-link detail-back-link" href={`/tailoring?productId=${encodeURIComponent(product.id)}`}>اطلب تفصيل هذا الموديل ←</Link>}
         <Link className="inline-link detail-back-link" href="/">العودة لمتابعة التسوق</Link>
       </section>
     </div>

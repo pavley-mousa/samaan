@@ -13,13 +13,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (!loading && user) router.replace('/'); }, [loading, user, router]);
+  const getSafeNextPath = () => {
+    if (typeof window === 'undefined') return '/';
+    const value = new URLSearchParams(window.location.search).get('next') ?? '/';
+    return value.startsWith('/') && !value.startsWith('//') ? value : '/';
+  };
+  useEffect(() => { if (!loading && user) router.replace(getSafeNextPath()); }, [loading, user, router]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(''); setBusy(true);
     try {
       await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-      await refresh(); router.replace('/');
+      await refresh(); router.replace(getSafeNextPath());
     } catch (e) { setError(e instanceof Error ? e.message : 'تعذر تسجيل الدخول.'); }
     finally { setBusy(false); }
   }

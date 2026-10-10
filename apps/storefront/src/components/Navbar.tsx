@@ -13,7 +13,7 @@ export function Navbar() {
       </nav>
       <div className="nav-actions">
         {loading ? <span className="muted small">جارٍ التحقق...</span> : user ? <>
-          <Link className="nav-user" href="/account">أهلًا، {user.name.split(' ')[0]}</Link>
+          <Link className="nav-user" href="/account">أهلًا، {user.name.split(' ')[0]}</Link><Link className="nav-user" href="/favorites">المفضلة</Link>
           <Link className="button button-light button-small" href="/cart">السلة</Link>
           {user.role === 'ADMIN' && <Link className="button button-dark button-small" href="/admin">لوحة التحكم</Link>}
           <button className="text-button" onClick={() => void logout()}>خروج</button>

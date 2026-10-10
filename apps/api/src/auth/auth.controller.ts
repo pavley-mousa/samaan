@@ -8,6 +8,9 @@ import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
+import { RequestEmailOtpDto } from './dto/request-email-otp.dto';
+import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
 
 const COOKIE_NAME = 'store_session';
 const COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
@@ -27,6 +30,32 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+
+  @Post('google')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async loginWithGoogle(@Body() dto: GoogleAuthDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.loginWithGoogle(dto.credential);
+    response.cookie(COOKIE_NAME, result.accessToken, cookieOptions());
+    return { user: result.user };
+  }
+
+  @Post('otp/request')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  requestEmailOtp(@Body() dto: RequestEmailOtpDto) {
+    return this.authService.requestEmailOtp(dto);
+  }
+
+  @Post('otp/verify')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async verifyEmailOtp(@Body() dto: VerifyEmailOtpDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.verifyEmailOtp(dto.email, dto.code);
+    response.cookie(COOKIE_NAME, result.accessToken, cookieOptions());
+    return { user: result.user };
   }
 
   @Post('forgot-password')

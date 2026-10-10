@@ -32,6 +32,30 @@ export class MailService {
     return true;
   }
 
+
+  async sendEmailOtp(email: string, code: string): Promise<boolean> {
+    const host = process.env.SMTP_HOST;
+    const from = process.env.SMTP_FROM;
+    if (!host || !from) {
+      if (process.env.NODE_ENV === 'production') throw new ServiceUnavailableException('Email OTP delivery is not configured.');
+      return false;
+    }
+    const port = Number(process.env.SMTP_PORT ?? 587);
+    const secure = String(process.env.SMTP_SECURE ?? 'false').toLowerCase() === 'true';
+    const transporter = nodemailer.createTransport({
+      host, port, secure,
+      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD ?? '' } : undefined,
+    });
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject: 'رمز الدخول والتحقق — Samaan',
+      text: 'رمز التحقق الخاص بك هو: ' + code + '. صالح لمدة 10 دقائق ويستخدم مرة واحدة فقط. إذا لم تطلب الرمز، تجاهل الرسالة.',
+      html: '<div dir="rtl" style="font-family:Arial,sans-serif"><h2>رمز التحقق الخاص بك</h2><p>استخدم الرمز التالي لتسجيل الدخول أو إنشاء حسابك:</p><div style="font-size:30px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f4f2eb;border-radius:10px;display:inline-block">' + code + '</div><p>ينتهي الرمز خلال 10 دقائق ويستخدم مرة واحدة فقط.</p><p>إذا لم تطلب هذا الرمز، تجاهل الرسالة.</p></div>',
+    });
+    return true;
+  }
+
   async sendPasswordResetEmail(email: string, token: string): Promise<void> {
     const host = process.env.SMTP_HOST;
     const from = process.env.SMTP_FROM;

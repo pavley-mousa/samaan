@@ -26,6 +26,7 @@ model User {
   email             String                  @unique @db.VarChar(254)
   phone             String?                 @db.VarChar(30)
   passwordHash      String                  @map("password_hash") @db.VarChar(255)
+  googleId          String?                 @unique @map("google_id") @db.VarChar(255)
   role              UserRole                @default(CUSTOMER)
   status            UserStatus              @default(PENDING_VERIFICATION)
   sessionVersion    Int                     @default(0) @map("session_version")
@@ -299,4 +300,20 @@ model Favorite {
 
   @@id([userId, productId])
   @@map("favorites")
+}
+
+
+model EmailOtp {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique @db.VarChar(254)
+  codeHash  String   @map("code_hash") @db.VarChar(64)
+  firstName String?  @map("first_name") @db.VarChar(60)
+  lastName  String?  @map("last_name") @db.VarChar(60)
+  phone     String?  @db.VarChar(30)
+  attempts  Int      @default(0)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("email_otps")
 }

@@ -184,8 +184,14 @@ export default function TailoringPage() {
 
   const customCategories = categories.filter((category) => category.productType === 'custom_galabiya');
   const fabricCategories = categories.filter((category) => category.productType === 'fabric');
-  const customProducts = products.filter((item) => item.productType === 'custom_galabiya' && (!tailoringCategoryId || item.categoryId === tailoringCategoryId));
-  const fabrics = products.filter((item) => item.productType === 'fabric' && (!fabricCategoryId || item.categoryId === fabricCategoryId));
+  const matchesCategory = (itemCategoryId: string | null | undefined, selectedId: string) => {
+    if (!selectedId) return true;
+    const selected = categories.find((category) => category.id === selectedId);
+    if (!selected || selected.parentId) return itemCategoryId === selectedId;
+    return itemCategoryId === selectedId || categories.some((category) => category.parentId === selected.id && category.id === itemCategoryId);
+  };
+  const customProducts = products.filter((item) => item.productType === 'custom_galabiya' && matchesCategory(item.categoryId, tailoringCategoryId));
+  const fabrics = products.filter((item) => item.productType === 'fabric' && matchesCategory(item.categoryId, fabricCategoryId));
   const youtubeId = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/)?.[1];
 
   return <main className="page-shell">

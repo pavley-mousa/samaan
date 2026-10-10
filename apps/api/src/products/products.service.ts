@@ -20,7 +20,6 @@ export class ProductsService {
     const where: Prisma.ProductWhereInput = {
       ...(filters.includeInactive ? {} : { isActive: true }),
       ...(filters.productType ? { productType: filters.productType } : {}),
-      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.search?.trim() ? {
         OR: [
           { name: { contains: filters.search.trim(), mode: 'insensitive' } },
@@ -29,6 +28,21 @@ export class ProductsService {
         ],
       } : {}),
     };
+    if (filters.categoryId) {
+      const selectedCategory = await this.prisma.category.findUnique({
+        where: { id: filters.categoryId },
+        select: { id: true, parentId: true, isActive: true },
+      });
+      if (selectedCategory?.isActive && !selectedCategory.parentId) {
+        const children = await this.prisma.category.findMany({
+          where: { parentId: selectedCategory.id, isActive: true },
+          select: { id: true },
+        });
+        where.categoryId = { in: [selectedCategory.id, ...children.map((child) => child.id)] };
+      } else {
+        where.categoryId = filters.categoryId;
+      }
+    }
     const products = await this.prisma.product.findMany({
       where,
       include: {

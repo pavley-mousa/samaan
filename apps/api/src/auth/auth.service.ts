@@ -10,15 +10,15 @@ import { MailService } from './mail.service';
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 const PASSWORD_COST = 12;
-type PublicUser = Pick<User, 'id' | 'name' | 'email' | 'phone' | 'role' | 'status' | 'emailVerifiedAt' | 'createdAt'>;
+type PublicUser = Pick<User, 'id' | 'name' | 'firstName' | 'lastName' | 'email' | 'phone' | 'role' | 'status' | 'emailVerifiedAt' | 'createdAt'>;
 
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService, private readonly jwt: JwtService, private readonly mail: MailService) {}
 
   private publicUser(user: User): PublicUser {
-    const { id, name, email, phone, role, status, emailVerifiedAt, createdAt } = user;
-    return { id, name, email, phone, role, status, emailVerifiedAt, createdAt };
+    const { id, name, firstName, lastName, email, phone, role, status, emailVerifiedAt, createdAt } = user;
+    return { id, name, firstName, lastName, email, phone, role, status, emailVerifiedAt, createdAt };
   }
 
   private digest(token: string): string {
@@ -31,6 +31,15 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto): Promise<{ message: string; verificationToken?: string }> {
+    const firstName = dto.firstName?.trim() || null;
+    const lastName = dto.lastName?.trim() || null;
+    if ((firstName && !lastName) || (!firstName && lastName)) {
+      throw new BadRequestException('اكتب الاسم الأول واسم العائلة معًا.');
+    }
+    const fullName = firstName && lastName ? `${firstName} ${lastName}` : dto.name?.trim();
+    if (!fullName || fullName.length < 2 || fullName.length > 120) {
+      throw new BadRequestException('الاسم الأول واسم العائلة مطلوبان لإنشاء الحساب.');
+    }
     if (Buffer.byteLength(dto.password, 'utf8') > 72) {
       throw new BadRequestException('كلمة المرور طويلة جدًا. استخدم كلمة مرور لا تتجاوز 72 بايتًا.');
     }
@@ -42,7 +51,9 @@ export class AuthService {
     const passwordHash = await hash(dto.password, PASSWORD_COST);
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name.trim(),
+        name: fullName,
+        firstName,
+        lastName,
         email,
         phone: dto.phone?.trim() || null,
         passwordHash,

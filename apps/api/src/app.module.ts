@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { OrdersModule } from './orders/orders.module';
+import { FavoritesModule } from './favorites/favorites.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { OrdersModule } from './orders/orders.module';
     AdminModule,
     ProductsModule,
     OrdersModule,
+    FavoritesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

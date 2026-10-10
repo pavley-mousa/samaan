@@ -3,6 +3,8 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 export type AppUser = {
   id: string;
   name: string;
+  firstName?: string | null;
+  lastName?: string | null;
   email: string;
   phone?: string | null;
   role: 'CUSTOMER' | 'ADMIN';

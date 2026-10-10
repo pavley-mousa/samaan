@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { SitePageQuickActions } from '@/components/SitePageQuickActions';
 
-type SitePage = { id: string; slug: string; title: string; content: string; updatedAt: string };
+type SitePage = { id: string; slug: string; title: string; content: string; isPublished: boolean; showInFooter: boolean; sortOrder: number; updatedAt: string };
 
 export default function BrandPage() {
   const params = useParams<{ slug: string }>();

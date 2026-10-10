@@ -8,6 +8,7 @@ import { ProductsModule } from './products/products.module';
 import { OrdersModule } from './orders/orders.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { TailoringModule } from './tailoring/tailoring.module';
+import { ContentModule } from './content/content.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TailoringModule } from './tailoring/tailoring.module';
     OrdersModule,
     FavoritesModule,
     TailoringModule,
+    ContentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -7,6 +7,10 @@ export class CategoriesController {
 
   @Get()
   findAll() {
-    return this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+    return this.prisma.category.findMany({
+      where: { isActive: true },
+      include: { parent: { select: { id: true, name: true, productType: true } } },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
   }
 }

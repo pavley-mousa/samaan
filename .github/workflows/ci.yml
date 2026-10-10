@@ -16,7 +16,6 @@ jobs:
       # Build-only placeholder. No production secret is used in CI.
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/samaan?schema=public
       API_PROXY_TARGET: https://samaan-api.example.invalid
-      NODE_ENV: production
       JWT_SECRET: ci-only-not-a-production-secret-0123456789abcdef
       SMTP_HOST: smtp.example.invalid
       SMTP_FROM: ci@example.invalid

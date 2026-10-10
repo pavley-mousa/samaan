@@ -14,7 +14,7 @@ export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const [product, setProduct] = useState<StoreProduct | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -22,9 +22,8 @@ export default function ProductDetailPage() {
   const [error, setError] = useState('');
   const [added, setAdded] = useState(false);
 
-  useEffect(() => { if (!loading && !user) router.replace('/login'); }, [loading, user, router]);
   useEffect(() => {
-    if (!user || !slug) return;
+    if (!slug) return;
     let cancelled = false;
     void apiRequest<StoreProduct>(`/products/${encodeURIComponent(slug)}`, { method: 'GET' })
       .then((data) => {
@@ -37,7 +36,7 @@ export default function ProductDetailPage() {
       .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'تعذر تحميل المنتج.'); })
       .finally(() => { if (!cancelled) setBusy(false); });
     return () => { cancelled = true; };
-  }, [user, slug]);
+  }, [slug]);
 
   const selectedVariant = useMemo(() => product?.variants.find((variant) => variant.id === selectedVariantId) ?? null, [product, selectedVariantId]);
   const price = product ? Number(selectedVariant?.price ?? product.basePrice) : 0;
@@ -45,7 +44,7 @@ export default function ProductDetailPage() {
   const needsVariant = Boolean(product && product.productType !== 'custom_galabiya');
   const canAdd = Boolean(product && (!needsVariant || (selectedVariant && stock >= quantity)) && quantity >= Number(product.minimumQuantity));
 
-  if (loading || !user || busy) return <main className="loading-shell">جارٍ تحميل تفاصيل المنتج...</main>;
+  if (busy) return <main className="loading-shell">جارٍ تحميل تفاصيل المنتج...</main>;
   if (!product) return <main className="page-shell"><div className="empty-state"><h1>المنتج غير متاح</h1><p>{error || 'المنتج الذي تبحث عنه غير موجود حاليًا.'}</p><Link className="button button-dark" href="/">العودة للمتجر</Link></div></main>;
 
   function handleAddToCart() {

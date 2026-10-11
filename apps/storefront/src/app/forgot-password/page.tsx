@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     } finally { setBusy(false); }
   }
 
-  return <main className="auth-page"><section className="auth-card">
+  return <main className="auth-page auth-page-premium"><div className="auth-layout"><section className="auth-card auth-card-premium">
     <span className="eyebrow">استعادة الحساب</span>
     <h1>نسيت كلمة المرور؟</h1>
     <p>اكتب البريد الإلكتروني المرتبط بحسابك. لو الحساب نشط، سنرسل رابطًا صالحًا لمدة 30 دقيقة.</p>
@@ -35,5 +35,17 @@ export default function ForgotPasswordPage() {
       <button className="button button-dark form-submit" disabled={busy}>{busy ? 'جارٍ الإرسال...' : 'إرسال رابط الاستعادة'}</button>
     </form>
     <p className="form-note"><Link href="/login" className="inline-link">العودة لتسجيل الدخول</Link></p>
-  </section></main>;
+  </section>
+    <aside className="auth-aside">
+      <div className="auth-aside-brand"><span className="brand-mark">S</span><span>Samaan<small>الأقمشة والجلاليب</small></span></div>
+      <div className="auth-aside-copy">
+        <span className="eyebrow">نرجّعك لحسابك</span>
+        <h2>خطوة بسيطة،<br /><span>وترجع تكمل تسوّقك.</span></h2>
+        <p>هنساعدك تستعيد الوصول لحسابك من خلال البريد الإلكتروني المرتبط بيه.</p>
+      </div>
+      <div className="auth-aside-fabric-art" aria-hidden="true"><i /><i /><i /><i /></div>
+      <div className="auth-aside-note"><span className="auth-aside-note-mark">✳</span><span><strong>حسابك في أمان</strong><small>لا تشارك رابط الاستعادة مع أي شخص</small></span></div>
+      <div className="auth-aside-number">SAMAAN / 03</div>
+    </aside>
+    </div></main>;
 }

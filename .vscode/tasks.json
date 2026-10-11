@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Samaan: Auto-sync GitHub",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\auto-sync.ps1",
+        "-IntervalSeconds",
+        "60"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "samaan-auto-sync",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[Samaan Auto Sync\\] Running",
+          "endsPattern": "^\\[Samaan Auto Sync\\] Ready$"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "clear": false,
+        "showReuseMessage": false
+      },
+      "runOptions": {
+        "runOn": "folderOpen",
+        "instanceLimit": 1,
+        "instancePolicy": "silent"
+      }
+    }
+  ]
+}

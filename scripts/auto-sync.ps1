@@ -36,7 +36,7 @@ while ($true) {
       } elseif ($localChanges.Count -gt 0) {
         Show-Status "Paused: local changes detected. Commit or stash them before syncing; no files were changed."
       } else {
-        & git -C $root fetch --quiet origin main
+        & git -C $root fetch --quiet origin
         if ($LASTEXITCODE -ne 0) {
           Show-Status "GitHub fetch failed. Check your internet connection and Git authentication."
         } else {

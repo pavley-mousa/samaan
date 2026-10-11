@@ -94,7 +94,7 @@ export default function HomePage() {
             <div className="fabric fabric-copper" />
             <div className="fabric fabric-sand" />
           </div>
-          <div className="hero-edition"><span>THE SAM AAN EDIT</span><strong>تفاصيل تصنع الفرق</strong><small>اختيارات منسّقة لذوقك</small></div>
+          <div className="hero-edition"><span>THE SAMAAN EDIT</span><strong>تفاصيل تصنع الفرق</strong><small>اختيارات منسّقة لذوقك</small></div>
           <div className="hero-seal"><span>خامة</span><strong>تليق بك</strong></div>
         </div>
       </section>

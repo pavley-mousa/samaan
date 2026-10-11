@@ -797,3 +797,16 @@ input, select, textarea { max-width: 100%; }
   .checkout-form .form-field-wide { grid-column: auto; }
   .checkout-success { margin: 18px auto; }
 }
+
+
+.mobile-menu-logout {
+  margin-top: 7px; border: 0; border-top: 1px solid #e9e4da; padding: 12px;
+  text-align: right; border-radius: 0 0 7px 7px; background: transparent;
+  color: #a64f3c; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer;
+}
+.mobile-menu-logout:hover { background: #faf0ed; }
+@media (max-width: 650px) {
+  .nav-actions { min-height: 32px; }
+  .mobile-menu { z-index: 20; }
+  .mobile-menu-panel { max-height: min(72svh, 560px); overflow-y: auto; }
+}

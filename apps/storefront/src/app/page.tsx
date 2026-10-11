@@ -24,7 +24,10 @@ type StoreProduct = {
 type StoreCategory = { id: string; name: string; slug: string; parentId?: string | null; productType?: string | null; parent?: { id: string; name: string; productType?: string | null } | null };
 
 const typeLabel: Record<string, string> = {
-  fabric: 'قماش بالمتر', ready_galabiya: 'جلابية جاهزة', custom_galabiya: 'تفصيل حسب الطلب', accessory: 'إكسسوارات',
+  fabric: 'أقمشة بالمتر',
+  ready_galabiya: 'جلابيب جاهزة',
+  custom_galabiya: 'تفصيل حسب الطلب',
+  accessory: 'إكسسوارات',
 };
 
 export default function HomePage() {
@@ -48,7 +51,8 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setProductsLoading(true); setProductsError('');
+    setProductsLoading(true);
+    setProductsError('');
     const query = new URLSearchParams({ limit: '100' });
     if (search.trim()) query.set('search', search.trim());
     if (productType) query.set('productType', productType);
@@ -60,21 +64,104 @@ export default function HomePage() {
     return () => { cancelled = true; };
   }, [search, productType, categoryId]);
 
-  return <main>
-    <section className="hero">
-      <div><span className="eyebrow">من الخامة للتفصيلة الأخيرة</span><h1>قماش يليق بذوقك،<br/><span>وجلّابية على مقاسك.</span></h1><p>اكتشف تشكيلة الأقمشة بالمتر والجلاليب الجاهزة، أو اطلب جلابية بتفاصيلك ومقاساتك. خيارات للأفراد وتجار الجملة في مكان واحد.</p><div className="button-row"><a className="button button-dark" href="#products">تصفح المنتجات <span aria-hidden="true"> ←</span></a><Link className="button button-light" href="/tailoring">اطلب تفصيل جلابية</Link></div></div>
-      <div className="hero-art" aria-label="تصميم توضيحي لأقمشة بألوان طبيعية"><div className="fabric-stack"><div className="fabric"/><div className="fabric"/><div className="fabric"/><div className="fabric"/></div><div className="thread-card">اختيارات بخامة مميزة<strong>جودة تبدأ من النسيج</strong></div></div>
-    </section>
-    <section className="section" id="fabrics"><div className="section-head"><div><span className="eyebrow">تسوّق حسب احتياجك</span><h2>اختار منين تبدأ</h2><p className="section-desc">كل احتياجات القماش والجلابية في تجربة واحدة.</p></div>{user?.role === 'ADMIN' && <Link className="button button-light" href="/admin">إدارة المتجر ←</Link>}</div>
-      <div className="category-grid"><a className="category-card" href="#products"><div className="category-icon">▤</div><div><h3>أقمشة بالمتر</h3><p>خامات وألوان تناسب كل موسم.</p></div><span className="arrow">←</span></a><a className="category-card" href="#products"><div className="category-icon">♧</div><div><h3>جلابيب جاهزة</h3><p>اختار الموديل والمقاس واللون.</p></div><span className="arrow">←</span></a><Link className="category-card" href="/tailoring"><div className="category-icon">✂</div><div><h3>تفصيل حسب الطلب</h3><p>تفاصيلك ومقاساتك في طلب واحد.</p></div><span className="arrow">←</span></Link></div>
-    </section>
-    <section className="section" id="products"><div className="section-head"><div><span className="eyebrow">اكتشف التشكيلة</span><h2>منتجات المتجر</h2><p className="section-desc">المنتجات المعروضة تُحمّل مباشرة من قاعدة البيانات.</p></div>{user?.role === 'ADMIN' && <Link className="button button-light" href="/admin">إضافة منتج جديد</Link>}</div>
-      <form className="catalog-filters" onSubmit={(event) => { event.preventDefault(); setSearch(searchInput); }}><label className="form-field"><span>ابحث عن منتج</span><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="اسم المنتج أو نوع الخامة" /></label><label className="form-field"><span>التصنيف</span><select value={productType} onChange={(event) => { setProductType(event.target.value); setCategoryId(""); }}><option value="">كل الأنواع</option><option value="fabric">أقمشة بالمتر</option><option value="ready_galabiya">جلابيب جاهزة</option><option value="custom_galabiya">تفصيل حسب الطلب</option><option value="accessory">إكسسوارات</option></select></label><label className="form-field"><span>الفئة / النوع</span><select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">كل الفئات</option>{categories.filter((category) => !productType || !category.productType || category.productType === productType).map((category) => <option key={category.id} value={category.id}>{category.parentId ? "— " : ""}{category.name}</option>)}</select></label><button className="button button-dark" type="submit">بحث</button><button className="button button-light" type="button" onClick={() => { setSearchInput(''); setSearch(''); setProductType(''); setCategoryId(''); }}>مسح الفلاتر</button></form>
-      {productsLoading && <div className="loading-inline">جارٍ تحميل المنتجات...</div>}
-      {productsError && <div className="form-error">{productsError}</div>}
-      {!productsLoading && !productsError && products.length === 0 && <div className="empty-state"><h3>لسه مفيش منتجات معروضة</h3><p>بعد ما المدير يضيف أول منتج ويحدد السعر والمخزون، هيظهر هنا.</p>{user?.role === 'ADMIN' && <Link className="button button-dark" href="/admin">إضافة أول منتج</Link>}</div>}
-      {products.length > 0 && <div className="feature-grid">{products.map((product) => <article className="demo-product product-card" key={product.id}><ProductQuickActions product={product} onChanged={() => window.location.reload()} /><Link href={`/products/${encodeURIComponent(product.slug)}`} className="product-photo">{product.images[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt={product.images[0].altText || product.name}/> : <div className={`demo-swatch ${product.productType === 'ready_galabiya' ? 'dark' : ''}`}/>}</Link><span className="pill">{typeLabel[product.productType] ?? product.productType}</span><h3><Link href={`/products/${encodeURIComponent(product.slug)}`}>{product.name}</Link></h3><p className="section-desc">{product.fabricType || product.description || 'تفاصيل المنتج متاحة داخل صفحة المنتج.'}</p><div className="product-card-bottom"><strong>{Number(product.basePrice).toLocaleString('ar-EG')} ج.م / {product.unit === 'meter' ? 'متر' : 'قطعة'}</strong><Link className="button button-light button-small" href={`/products/${encodeURIComponent(product.slug)}`}>التفاصيل ←</Link></div></article>)}</div>}
-    </section>
-    <section className="band"><div><h2>بتشتري بالجملة؟</h2><p>طلب أسعار الجملة حسب الكمية هيتاح ضمن خطوات إتمام الطلب.</p></div><Link className="button" href="/account">عرض حسابي ←</Link></section>
-  </main>;
+  function chooseType(type: string) {
+    setProductType(type);
+    setCategoryId('');
+  }
+
+  return (
+    <main className="store-home">
+      <section className="hero hero-premium">
+        <div className="hero-copy">
+          <div className="hero-kicker"><span className="hero-kicker-dot" /> أناقة تبدأ من الخامة</div>
+          <h1>اختار خامتك،<br /><span>وخلي ذوقك يتكلم.</span></h1>
+          <p>أقمشة مختارة، جلاليب جاهزة، وتفصيل حسب المقاس. تجربة تسوّق بسيطة تجمع التفاصيل اللي تهمك في مكان واحد.</p>
+          <div className="button-row hero-buttons">
+            <a className="button button-dark" href="#products">اكتشف التشكيلة <span aria-hidden="true"> ←</span></a>
+            <Link className="button button-light" href="/tailoring">صمّم جلابيتك</Link>
+          </div>
+          <div className="hero-proof-row" aria-label="مميزات المتجر">
+            <span><b>01</b> أقمشة بالمتر</span>
+            <span><b>02</b> موديلات جاهزة</span>
+            <span><b>03</b> تفصيل حسب الطلب</span>
+          </div>
+        </div>
+        <div className="hero-art" role="img" aria-label="تصميم تجريدي لطبقات أقمشة بألوان راقية">
+          <div className="hero-art-ring" />
+          <div className="fabric-stack">
+            <div className="fabric fabric-ivory" />
+            <div className="fabric fabric-forest" />
+            <div className="fabric fabric-copper" />
+            <div className="fabric fabric-sand" />
+          </div>
+          <div className="hero-edition"><span>THE SAM AAN EDIT</span><strong>تفاصيل تصنع الفرق</strong><small>اختيارات منسّقة لذوقك</small></div>
+          <div className="hero-seal"><span>خامة</span><strong>تليق بك</strong></div>
+        </div>
+      </section>
+
+      <section className="trust-strip" aria-label="تجربة Samaan">
+        <div><span className="trust-icon">✳</span><span><strong>اختيارات متنوّعة</strong><small>خامات وموديلات مختلفة</small></span></div>
+        <div><span className="trust-icon">◇</span><span><strong>تفاصيل على ذوقك</strong><small>خيارات للتفصيل حسب الطلب</small></span></div>
+        <div><span className="trust-icon">⌁</span><span><strong>تجربة واضحة</strong><small>تفاصيل وسعر لكل منتج</small></span></div>
+      </section>
+
+      <section className="section section-premium" id="fabrics">
+        <div className="section-head">
+          <div><span className="eyebrow">تسوّق بالطريقة اللي تناسبك</span><h2>اختار منين تبدأ</h2><p className="section-desc">من الخامة المناسبة للموديل اللي في بالك — ابدأ بخطوة.</p></div>
+          {user?.role === 'ADMIN' && <Link className="button button-light" href="/admin">إدارة المتجر <span aria-hidden="true">←</span></Link>}
+        </div>
+        <div className="category-grid category-grid-premium">
+          <a className={`category-card category-card-fabric ${productType === 'fabric' ? 'category-card-active' : ''}`} href="#products" onClick={() => chooseType('fabric')}>
+            <div className="category-card-top"><span className="category-icon">▤</span><span className="category-card-number">01</span></div>
+            <div><h3>أقمشة بالمتر</h3><p>خامات وألوان لمساحتك الخاصة.</p></div><span className="category-link">تصفّح الأقمشة <b>←</b></span>
+          </a>
+          <a className={`category-card category-card-galabiya ${productType === 'ready_galabiya' ? 'category-card-active' : ''}`} href="#products" onClick={() => chooseType('ready_galabiya')}>
+            <div className="category-card-top"><span className="category-icon">♧</span><span className="category-card-number">02</span></div>
+            <div><h3>جلابيب جاهزة</h3><p>اختار الموديل والمقاس واللون.</p></div><span className="category-link">اكتشف الموديلات <b>←</b></span>
+          </a>
+          <Link className="category-card category-card-tailoring" href="/tailoring">
+            <div className="category-card-top"><span className="category-icon">✂</span><span className="category-card-number">03</span></div>
+            <div><h3>تفصيل حسب الطلب</h3><p>تفاصيلك ومقاساتك في طلب واحد.</p></div><span className="category-link">ابدأ طلب التفصيل <b>←</b></span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="section section-premium products-section" id="products">
+        <div className="section-head">
+          <div><span className="eyebrow">اختياراتنا لك</span><h2>تصفّح منتجات المتجر</h2><p className="section-desc">استكشف المنتجات المتاحة، وافتح صفحة المنتج لمعرفة التفاصيل.</p></div>
+          {user?.role === 'ADMIN' && <Link className="button button-light" href="/admin">إضافة منتج جديد <span aria-hidden="true">←</span></Link>}
+        </div>
+        <form className="catalog-filters catalog-filters-premium" onSubmit={(event) => { event.preventDefault(); setSearch(searchInput); }}>
+          <label className="form-field catalog-search-field"><span>ابحث عن منتج</span><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="اسم المنتج أو نوع الخامة" /></label>
+          <label className="form-field"><span>نوع المنتج</span><select value={productType} onChange={(event) => { setProductType(event.target.value); setCategoryId(''); }}><option value="">كل الأنواع</option><option value="fabric">أقمشة بالمتر</option><option value="ready_galabiya">جلابيب جاهزة</option><option value="custom_galabiya">تفصيل حسب الطلب</option><option value="accessory">إكسسوارات</option></select></label>
+          <label className="form-field"><span>الفئة</span><select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">كل الفئات</option>{categories.filter((category) => !productType || !category.productType || category.productType === productType).map((category) => <option key={category.id} value={category.id}>{category.parentId ? '— ' : ''}{category.name}</option>)}</select></label>
+          <div className="catalog-filter-actions"><button className="button button-dark" type="submit">بحث <span aria-hidden="true">⌕</span></button><button className="button button-light" type="button" onClick={() => { setSearchInput(''); setSearch(''); setProductType(''); setCategoryId(''); }}>إعادة ضبط</button></div>
+        </form>
+
+        {productsLoading && <div className="loading-inline"><span className="loading-spinner" />جارٍ تجهيز التشكيلة...</div>}
+        {productsError && <div className="form-error" role="alert">{productsError}</div>}
+        {!productsLoading && !productsError && products.length === 0 && <div className="empty-state"><span className="empty-state-mark">S</span><h3>التشكيلة بتتجهّز</h3><p>لسه مفيش منتجات مطابقة للبحث. جرّب تغيير الفئة أو ارجع لكل المنتجات.</p><button className="button button-dark" onClick={() => { setSearchInput(''); setSearch(''); setProductType(''); setCategoryId(''); }}>عرض كل المنتجات</button>{user?.role === 'ADMIN' && <Link className="button button-light" href="/admin">إضافة أول منتج</Link>}</div>}
+
+        {products.length > 0 && <div className="feature-grid feature-grid-premium">{products.map((product, index) => (
+          <article className="demo-product product-card product-card-premium" key={product.id}>
+            <ProductQuickActions product={product} onChanged={() => window.location.reload()} />
+            <Link href={`/products/${encodeURIComponent(product.slug)}`} className="product-photo product-photo-premium">
+              {product.images[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt={product.images[0].altText || product.name} loading={index < 4 ? 'eager' : 'lazy'} /> : <div className={`demo-swatch ${product.productType === 'ready_galabiya' ? 'dark' : ''}`} />}
+              <span className="product-photo-arrow" aria-hidden="true">↖</span>
+            </Link>
+            <div className="product-type-row"><span className="pill">{typeLabel[product.productType] ?? product.productType}</span>{product.stockQuantity !== undefined && <span className="product-stock-note">{product.stockQuantity > 0 ? 'متاح' : 'غير متاح'}</span>}</div>
+            <h3><Link href={`/products/${encodeURIComponent(product.slug)}`}>{product.name}</Link></h3>
+            <p className="product-short-desc">{product.fabricType || product.description || 'تفاصيل المنتج متاحة داخل صفحة المنتج.'}</p>
+            <div className="product-card-bottom"><div><strong>{Number(product.basePrice).toLocaleString('ar-EG')} ج.م</strong><small> / {product.unit === 'meter' ? 'متر' : 'قطعة'}</small></div><Link className="product-details-link" href={`/products/${encodeURIComponent(product.slug)}`} aria-label={`تفاصيل ${product.name}`}>التفاصيل <span aria-hidden="true">←</span></Link></div>
+          </article>
+        ))}</div>}
+      </section>
+
+      <section className="band band-premium">
+        <div className="band-mark">S.</div>
+        <div className="band-copy"><span className="eyebrow">للأفراد وتجار الجملة</span><h2>عندك طلب أكبر أو فكرة مخصوصة؟</h2><p>تواصل مع تجربة Samaan وابدأ بخيارات تناسب احتياجك.</p></div>
+        <Link className="button band-cta" href={user ? '/account' : '/login'}>{user ? 'افتح حسابك' : 'ابدأ الآن'} <span aria-hidden="true">←</span></Link>
+      </section>
+    </main>
+  );
 }

@@ -26,8 +26,7 @@
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "^\\[Samaan Auto Sync\\] Running",
-          "endsPattern": "^\\[Samaan Auto Sync\\] Ready$"
+          "beginsPattern": "^\\[Samaan Auto Sync\\] Running"
         }
       },
       "presentation": {

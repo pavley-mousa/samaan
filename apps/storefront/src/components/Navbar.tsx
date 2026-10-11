@@ -45,6 +45,7 @@ export function Navbar() {
           <Link onClick={closeMobileMenu} href="/tailoring">تفصيل جلابية</Link>
           {user && <><Link onClick={closeMobileMenu} href="/account">حسابي وطلباتي</Link><Link onClick={closeMobileMenu} href="/favorites">المفضلة</Link></>}
           {user?.role === 'ADMIN' && <><Link onClick={closeMobileMenu} href="/admin">لوحة التحكم</Link><Link onClick={closeMobileMenu} href="/admin/tailoring">طلبات التفصيل</Link></>}
+          {user && <button type="button" className="mobile-menu-logout" onClick={(event) => { closeMobileMenu(event); void logout(); }}>تسجيل الخروج</button>}
         </nav>
       </details>
     </header>

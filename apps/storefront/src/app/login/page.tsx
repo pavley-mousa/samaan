@@ -112,8 +112,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
+    <main className="auth-page auth-page-premium">
+      <div className="auth-layout">
+      <section className="auth-card auth-card-premium">
         <span className="eyebrow">مرحبًا بعودتك</span>
         <h1>تسجيل الدخول</h1>
         <p>سجّل الدخول للوصول إلى المتجر وطلباتك.</p>
@@ -161,6 +162,18 @@ export default function LoginPage() {
 
         <p className="form-note">ليس لديك حساب؟ <Link className="inline-link" href="/register">إنشاء حساب جديد</Link></p>
       </section>
+      <aside className="auth-aside login-aside">
+        <div className="auth-aside-brand"><span className="brand-mark">S</span><span>Samaan<small>الأقمشة والجلاليب</small></span></div>
+        <div className="auth-aside-copy">
+          <span className="eyebrow">أهلًا بعودتك</span>
+          <h2>ذوقك يبدأ من هنا،<br /><span>وتفاصيلك علينا.</span></h2>
+          <p>ادخل لحسابك وتابع طلباتك، اكتشف خامات جديدة، أو ابدأ طلب تفصيل يناسبك.</p>
+        </div>
+        <div className="auth-aside-fabric-art" aria-hidden="true"><i /><i /><i /><i /></div>
+        <div className="auth-aside-note"><span className="auth-aside-note-mark">✳</span><span><strong>تجربة تسوّق واحدة</strong><small>أقمشة · جلاليب · تفصيل حسب الطلب</small></span></div>
+        <div className="auth-aside-number">SAMAAN / 01</div>
+      </aside>
+      </div>
     </main>
   );
 }

@@ -67,6 +67,5 @@ while ($true) {
     Show-Status "Unexpected sync issue: $($_.Exception.Message)"
   }
 
-  Write-Host "[Samaan Auto Sync] Ready"
   Start-Sleep -Seconds $IntervalSeconds
 }

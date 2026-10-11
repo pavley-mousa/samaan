@@ -123,8 +123,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
+    <main className="auth-page auth-page-premium">
+      <div className="auth-layout">
+      <section className="auth-card auth-card-premium">
         <span className="eyebrow">حسابك في المتجر</span>
         <h1>إنشاء حساب</h1>
         <p>اختار الطريقة الأنسب لك: Google أو البريد الإلكتروني بكلمة مرور أو رمز OTP.</p>
@@ -187,6 +188,18 @@ export default function RegisterPage() {
 
         <p className="form-note">لديك حساب بالفعل؟ <Link className="inline-link" href="/login">تسجيل الدخول</Link></p>
       </section>
+      <aside className="auth-aside register-aside">
+        <div className="auth-aside-brand"><span className="brand-mark">S</span><span>Samaan<small>الأقمشة والجلاليب</small></span></div>
+        <div className="auth-aside-copy">
+          <span className="eyebrow">حسابك الجديد</span>
+          <h2>اختيارات تشبهك،<br /><span>وتفاصيل على مقاسك.</span></h2>
+          <p>أنشئ حسابك بسهولة واحفظ بياناتك، تابع مشترياتك، وخلي تجربة اختيار الخامة والتفصيل أبسط.</p>
+        </div>
+        <div className="auth-aside-fabric-art" aria-hidden="true"><i /><i /><i /><i /></div>
+        <div className="auth-aside-note"><span className="auth-aside-note-mark">✳</span><span><strong>ابدأ رحلتك مع Samaan</strong><small>كل ما تحتاجه في مكان واحد</small></span></div>
+        <div className="auth-aside-number">SAMAAN / 02</div>
+      </aside>
+      </div>
     </main>
   );
 }
